@@ -1,0 +1,1420 @@
+GitHub/
+├── tasty-hub/          ← Your existing app (keep as is)
+└── tasty-hub-devops/   ← NEW repo (all DevOps files)
+The DevOps repo will pull your app and deploy it. This is exactly how real companies work — Dev team owns the app repo, DevOps team owns the infra repo.
+
+📁 What the New Repo Will Look Like
+tasty-hub-devops/
+├── README.md
+├── docker/
+│   ├── docker-compose.yml
+│   ├── frontend/
+│   │   ├── Dockerfile
+│   │   └── nginx.conf
+│   └── backend/
+│       └── Dockerfile
+├── .github/
+│   └── workflows/
+│       ├── build-push.yml      ← CI/CD pipeline
+│       └── deploy.yml          ← Auto deploy to EC2
+├── nginx/
+│   └── nginx.conf              ← Reverse proxy config
+├── k8s/
+│   ├── namespace.yml
+│   ├── frontend-deployment.yml
+│   ├── backend-deployment.yml
+│   ├── mysql-deployment.yml
+│   ├── frontend-service.yml
+│   ├── backend-service.yml
+│   ├── configmap.yml
+│   ├── secret.yml
+│   └── ingress.yml
+└── terraform/
+    ├── main.tf
+    ├── variables.tf
+    ├── outputs.tf
+    ├── ec2.tf
+    └── security-groups.tf
+
+🐳 Let's Start — Phase 1: Docker
+Step 1 — Create New Folder
+On your computer create a folder called tasty-hub-devops
+Open it in VS Code.
+
+Step 2 — Create All Files
+Open VS Code terminal and run:
+powershell
+New-Item -ItemType Directory -Force -Path docker\frontend
+New-Item -ItemType Directory -Force -Path docker\backend
+New-Item -ItemType Directory -Force -Path .github\workflows
+New-Item -ItemType Directory -Force -Path nginx
+New-Item -ItemType Directory -Force -Path k8s
+New-Item -ItemType Directory -Force -Path terraform
+
+Step 3 — Add All Docker Files
+docker/backend/Dockerfile
+dockerfile
+# Stage 1 - Build
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --production
+COPY . .
+# Stage 2 - Production
+FROM node:18-alpine
+WORKDIR /app
+COPY --from=builder /app .
+EXPOSE 5000
+CMD ["node", "server.js"]
+
+docker/frontend/Dockerfile
+dockerfile
+# Stage 1 - Build React App
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+# Stage 2 - Serve with Nginx
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+docker/frontend/nginx.conf
+nginx
+server {
+    listen 80;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+    # Handle React Router
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+    # Proxy API calls to backend
+    location /api {
+        proxy_pass http://backend:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    # Gzip compression
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+}
+
+docker/docker-compose.yml
+yaml
+version: '3.8'
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: tastyhub-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: restaurant_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../../tasty-hub/database.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - tastyhub-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # Node.js Backend
+  backend:
+    build:
+      context: ../../tasty-hub/backend
+      dockerfile: ../../tasty-hub-devops/docker/backend/Dockerfile
+    container_name: tastyhub-backend
+    restart: always
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: restaurant_db
+      SESSION_SECRET: ${SESSION_SECRET}
+      PORT: 5000
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - tastyhub-network
+  # React Frontend
+  frontend:
+    build:
+      context: ../../tasty-hub/frontend
+      dockerfile: ../../tasty-hub-devops/docker/frontend/Dockerfile
+    container_name: tastyhub-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - tastyhub-network
+networks:
+  tastyhub-network:
+    driver: bridge
+volumes:
+  mysql_data:
+    driver: local
+
+.env file (in root of devops repo)
+env
+DB_PASSWORD=your_mysql_password
+SESSION_SECRET=tastyhub_secret_123
+
+Step 4 — GitHub Actions CI/CD
+.github/workflows/build-push.yml
+yaml
+name: Build and Push Docker Images
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout DevOps repo
+        uses: actions/checkout@v3
+      - name: Checkout App repo
+        uses: actions/checkout@v3
+        with:
+          repository: yourgithubusername/tasty-hub
+          path: tasty-hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./tasty-hub/backend
+          file: ./docker/backend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/tastyhub-backend:latest
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./tasty-hub/frontend
+          file: ./docker/frontend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/tastyhub-frontend:latest
+
+.github/workflows/deploy.yml
+yaml
+name: Deploy to AWS EC2
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/tasty-hub-devops
+            docker-compose -f docker/docker-compose.yml pull
+            docker-compose -f docker/docker-compose.yml up -d
+            docker system prune -f
+
+Step 5 — Nginx Reverse Proxy (for EC2)
+nginx/nginx.conf
+nginx
+upstream frontend {
+    server localhost:80;
+}
+upstream backend {
+    server localhost:5000;
+}
+server {
+    listen 80;
+    server_name your-domain.com;
+    location / {
+        proxy_pass http://frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+    location /api {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+    }
+}
+
+Step 6 — Kubernetes Files
+k8s/namespace.yml
+yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tastyhub
+k8s/secret.yml
+yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tastyhub-secrets
+  namespace: tastyhub
+type: Opaque
+stringData:
+  DB_PASSWORD: your_password_here
+  SESSION_SECRET: your_secret_here
+k8s/mysql-deployment.yml
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: tastyhub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tastyhub-secrets
+                  key: DB_PASSWORD
+            - name: MYSQL_DATABASE
+              value: restaurant_db
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: tastyhub
+spec:
+  selector:
+    app: mysql
+  ports:
+    - port: 3306
+k8s/backend-deployment.yml
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: tastyhub
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: yourdockerhub/tastyhub-backend:latest
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_HOST
+              value: mysql
+            - name: DB_USER
+              value: root
+            - name: DB_NAME
+              value: restaurant_db
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tastyhub-secrets
+                  key: DB_PASSWORD
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tastyhub-secrets
+                  key: SESSION_SECRET
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: tastyhub
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 5000
+k8s/frontend-deployment.yml
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: tastyhub
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: yourdockerhub/tastyhub-frontend:latest
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: tastyhub
+spec:
+  selector:
+    app: frontend
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+k8s/ingress.yml
+yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tastyhub-ingress
+  namespace: tastyhub
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - host: your-domain.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 5000
+
+Step 7 — Terraform Files
+terraform/variables.tf
+hcl
+variable "aws_region" {
+  description = "AWS region"
+  default     = "ap-south-1"
+}
+variable "instance_type" {
+  description = "EC2 instance type"
+  default     = "t2.micro"
+}
+variable "key_name" {
+  description = "AWS Key Pair name"
+  type        = string
+}
+variable "ami_id" {
+  description = "Ubuntu 22.04 AMI ID"
+  default     = "ami-0f5ee92e2d63afc18"
+}
+terraform/main.tf
+hcl
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+provider "aws" {
+  region = var.aws_region
+}
+terraform/ec2.tf
+hcl
+resource "aws_instance" "tastyhub_server" {
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  key_name               = var.key_name
+  vpc_security_group_ids = [aws_security_group.tastyhub_sg.id]
+  user_data = <<-EOF
+    #!/bin/bash
+    apt-get update -y
+    apt-get install -y docker.io docker-compose git
+    systemctl start docker
+    systemctl enable docker
+    usermod -aG docker ubuntu
+    cd /home/ubuntu
+    git clone https://github.com/yourusername/tasty-hub-devops.git
+    cd tasty-hub-devops
+    docker-compose -f docker/docker-compose.yml up -d
+  EOF
+  tags = {
+    Name    = "TastyHub-Server"
+    Project = "TastyHub"
+  }
+}
+output "public_ip" {
+  value       = aws_instance.tastyhub_server.public_ip
+  description = "EC2 Public IP"
+}
+terraform/security-groups.tf
+hcl
+resource "aws_security_group" "tastyhub_sg" {
+  name        = "tastyhub-security-group"
+  description = "Security group for TastyHub app"
+  # HTTP
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  # HTTPS
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  # SSH
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  # Backend API
+  ingress {
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    Name = "tastyhub-sg"
+  }
+}
+
+✅ Now Push to GitHub
+powershell
+cd tasty-hub-devops
+git init
+git add .
+git commit -m "feat: add complete DevOps setup - Docker, CI/CD, K8s, Terraform"
+git branch -M main
+git remote add origin https://github.com/yourusername/tasty-hub-devops.git
+git push -u origin main
+
+🔐 Add GitHub Secrets
+Go to your tasty-hub-devops GitHub repo → Settings → Secrets → Actions and add:
+Secret Name	Value
+DOCKER_USERNAME	Your Docker Hub username
+DOCKER_PASSWORD	Your Docker Hub password
+EC2_HOST	Your EC2 public IP (after creating)
+EC2_SSH_KEY	Your EC2 private key content
+
+
+
+
+TASTY HUB PROJECT
+│
+├── Phase 1 → Docker + Docker Compose
+│   ├── Write Dockerfiles
+│   ├── Write docker-compose.yml
+│   ├── Test locally
+│   └── App runs in containers ✅
+│
+├── Phase 2 → GitHub + Docker Hub (CI/CD)
+│   ├── Push code to GitHub
+│   ├── GitHub Actions builds images
+│   ├── Auto pushes to Docker Hub
+│   └── Pipeline runs on every push ✅
+│
+├── Phase 3 → AWS EC2 + Nginx
+│   ├── Launch EC2 instance
+│   ├── Install Docker on EC2
+│   ├── Pull images from Docker Hub
+│   ├── Setup Nginx reverse proxy
+│   └── App live on public IP ✅
+│
+├── Phase 4 → Terraform
+│   ├── Write EC2 infrastructure as code
+│   ├── terraform init
+│   ├── terraform plan
+│   ├── terraform apply
+│   └── EC2 created automatically ✅
+│
+├─promethiues and grafana
+
+
+└── Phase 6 → Kubernetes
+    ├── Write K8s manifests
+    ├── Deploy to AWS EKS
+    ├── Configure Ingress
+    └── App orchestrated ✅
+
+
+⏱️ Full Time Estimate
+Phase	What	Time
+Phase 1	Docker	2-3 hours
+Phase 2	CI/CD	1 hour
+Phase 3	AWS EC2	1-2 hours
+Phase 4	Terraform	1 hour
+Phase 5	proemthies and grafana	1 hour
+Phase 6	Kubernetes	2 hours
+Total		~9-10 hours
+
+Project → Tasty Hub
+GitHub  → github.com/Chandangadewar/Tasty-hub-app
+
+✅ Phase 0 → Full stack app complete
+✅ Phase 1 → Docker complete
+✅ Phase 2 → CI/CD complete
+
+Remaining:
+🔄 Phase 3 → AWS EC2
+🔄 Phase 4 → Terraform  
+🔄 Phase 5 → Prometheus + Grafana
+🔄 Phase 6 → Kubernetes on EKS
+
+
+
+tasty-hub/
+├── backend/               ← already exists
+├── frontend/              ← already exists
+├── database.sql           ← already exists
+├── README.md              ← already exists
+│
+├── docker/                ← ADD THIS
+│   ├── docker-compose.yml
+│   ├── frontend/Dockerfile
+│   ├── frontend/nginx.conf
+│   └── backend/Dockerfile
+│
+├── .github/               ← ADD THIS
+│   └── workflows/
+│       ├── build-push.yml
+│       └── deploy.yml
+│
+├── nginx/                 ← ADD THIS
+│   └── nginx.conf
+│
+├── k8s/                   ← ADD THIS
+│   ├── namespace.yml
+│   ├── frontend-deployment.yml
+│   ├── backend-deployment.yml
+│   ├── mysql-deployment.yml
+│   └── ingress.yml
+│
+└── terraform/             ← ADD THIS
+    ├── main.tf
+    ├── variables.tf
+    ├── ec2.tf
+    └── security-groups.tf
+
+
+docker-compose down
+docker-compose up -d
+```
+
+The `-v` flag is what wipes your database! Without it, data **persists forever** between restarts! ✅
+
+---
+
+## Daily Routine Forever:
+
+| Action | Command |
+|---|---|
+| Start | `docker-compose up -d` |
+| Stop | `docker-compose down` |
+| Check logs | `docker-compose logs backend` |
+| Nuclear reset | `docker-compose down -v` (only if you WANT to wipe data) |
+
+---
+
+## 💾 Memory Saved
+```
+✅ Phase 1 COMPLETE
+   Key lesson: Never use down -v unless 
+   you want to wipe database!
+   
+   Daily commands:
+   START → docker-compose up -d
+   STOP  → docker-compose down
+
+
+
+
+But wait — we switched to bcryptjs!
+The old hash might not work. Generate a new one:
+powershell
+docker exec -it tastyhub-backend node -e "const bcrypt = require('bcryptjs'); bcrypt.hash('admin123', 10).then(h => console.log(h))"
+Copy the hash it prints, then run:
+sql
+docker exec -it tastyhub-mysql mysql -u root -p
+sql
+USE restaurant_db;
+SET SQL_SAFE_UPDATES = 0;
+DELETE FROM admins;
+INSERT INTO admins (username, password) VALUES ('admin', 'PASTE_NEW_HASH_HERE');
+SET SQL_SAFE_UPDATES = 1;
+Then try http://localhost/admin/login with admin / admin123 😊
+
+
+Also run this on new device MySQL:
+Open MySQL Workbench or MySQL CLI and run:
+sql
+CREATE DATABASE IF NOT EXISTS restaurant_db;
+SOURCE path/to/database.sql;
+```
+---
+## This is Exactly Why Docker is Better! 🐳
+```
+Without Docker (current problem):
+Every device needs:
+- MySQL installed
+- Correct password
+- database.sql imported
+- .env configured
+- Node.js installed
+= Different setup every time ❌
+
+With Docker (what you built):
+Just run:
+docker-compose up -d
+= Works on ANY device same way ✅
+This is the exact point you can mention in interviews:
+	"I containerized the app with Docker so it runs consistently across all environments without manual setup"
+
+
+How Docker Works (Phase 1) 🐳
+Your Code
+    ↓
+Dockerfile → Instructions to build image
+    ↓
+Docker Image → Snapshot of your app
+    ↓
+Docker Container → Running instance of image
+    ↓
+docker-compose → Runs all containers together
+What each file does:
+docker/backend/Dockerfile
+→ Says: "Take Node.js, copy my code, run npm install, start server"
+
+docker/frontend/Dockerfile  
+→ Says: "Take Node.js, build React app, serve with Nginx"
+
+docker/docker-compose.yml
+→ Says: "Run MySQL + Backend + Frontend + Datadog together
+         on same network so they can talk to each other"
+Commands you learned:
+docker-compose up -d      → Start all containers background
+docker-compose down       → Stop all containers
+docker-compose logs X     → See logs of container X
+docker-compose ps         → Check all containers status
+docker-compose build      → Rebuild images
+docker system prune -f    → Clean unused images/cache
+
+
+
+
+
+Permanent Fix — Change MySQL port in docker-compose.yml
+Open docker/docker-compose.yml → find mysql ports → change:
+yaml
+    ports:
+      - "3306:3306"
+To:
+yaml
+    ports:
+      - "3307:3306"
+This way Docker MySQL uses port 3307 and your local MySQL keeps 3306 — no conflict ever again! ✅
+Then:
+powershell
+docker-compose down
+docker-compose up -d
+```
+---
+## Why This Keeps Happening?
+```
+Your laptop has MySQL installed locally → uses port 3306
+Docker MySQL also wants port 3306
+= Two things fighting for same port ❌
+
+Solution:
+Local MySQL  → 3306 (unchanged)
+Docker MySQL → 3307 (different port)
+= No conflict ever! ✅
+
+
+How CI/CD Works (Phase 2) ⚙️
+You write code on laptop
+    ↓
+git push to GitHub
+    ↓
+GitHub Actions triggers automatically
+    ↓
+Runs on GitHub's server (ubuntu-latest)
+    ↓
+Reads .github/workflows/build-push.yml
+    ↓
+Step 1: Checkout your code
+Step 2: Login to Docker Hub
+Step 3: Build backend image
+Step 4: Push to Docker Hub
+Step 5: Build frontend image  
+Step 6: Push to Docker Hub
+    ↓
+Images available at hub.docker.com
+What each file does:
+.github/workflows/build-push.yml
+→ Triggers on every push to main
+→ Builds Docker images
+→ Pushes to Docker Hub
+
+.github/workflows/deploy.yml
+→ Triggers after build-push succeeds
+→ SSHs into EC2
+→ Pulls new images
+→ Restarts containers
+→ App updated automatically!
+Key concepts learned:
+GitHub Secrets
+→ Passwords stored safely in GitHub
+→ Never visible in code
+→ Referenced as ${{ secrets.NAME }}
+
+Docker Hub
+→ Like GitHub but for Docker images
+→ Stores your built images
+→ EC2 pulls images from here
+
+Workflow triggers
+→ on: push → runs when you push code
+→ on: workflow_run → runs after another workflow
+
+Full Flow When You Push Code:
+git push
+    ↓
+GitHub Actions starts (2-3 mins)
+    ↓
+Builds new Docker images
+    ↓
+Pushes to Docker Hub
+    ↓ (Phase 3 onwards)
+SSHs into EC2
+    ↓
+Pulls new images
+    ↓
+Restarts containers
+    ↓
+Live app updated! 🎉
+
+
+
+
+
+
+First — What Problem Does CI/CD Solve?
+Without CI/CD (Old Way):
+Developer writes code on laptop
+        ↓
+Manually runs tests
+        ↓
+Manually builds Docker image
+        ↓
+Manually pushes to Docker Hub
+        ↓
+Manually SSHs into server
+        ↓
+Manually pulls new image
+        ↓
+Manually restarts app
+        ↓
+😤 Takes 30-45 mins every time
+    Human error possible every step
+With CI/CD (Your Way):
+Developer writes code on laptop
+        ↓
+git push
+        ↓
+EVERYTHING ELSE HAPPENS AUTOMATICALLY
+        ↓
+😎 Takes 3-5 mins, zero human effort
+
+What Does CI/CD Stand For?
+CI = Continuous Integration
+→ Every time you push code
+→ It automatically builds and tests
+→ "Integrating" your code continuously
+
+CD = Continuous Deployment  
+→ After CI succeeds
+→ It automatically deploys to server
+→ "Deploying" continuously
+
+Your Project's CI/CD Flow — Step by Step
+YOUR LAPTOP
+│
+│  You write code
+│  git add .
+│  git commit -m "new feature"
+│  git push
+│
+└──────────────────────────────────────►
+                                        GITHUB
+                                        │
+                                        │ GitHub sees new push!
+                                        │ Looks for workflow files in
+                                        │ .github/workflows/
+                                        │
+                                        │ Starts a FREE virtual machine
+                                        │ (ubuntu-latest server)
+                                        │
+                                        ▼
+                                GITHUB ACTIONS RUNNER
+                                (Free Ubuntu Server)
+                                │
+                                │ Step 1: Downloads your code
+                                │ Step 2: Logs into Docker Hub
+                                │ Step 3: Builds backend image
+                                │ Step 4: Pushes backend image
+                                │ Step 5: Builds frontend image
+                                │ Step 6: Pushes frontend image
+                                │
+                                └──────────────────────────►
+                                                            DOCKER HUB
+                                                            │
+                                                            │ Stores your images
+                                                            │ like a warehouse
+                                                            │
+                                                            │ chandangadewar/
+                                                            │ tastyhub-backend:latest
+                                                            │ tastyhub-frontend:latest
+                                                            │
+                                                            ▼
+                                                    (Phase 3 onwards)
+                                                    AWS EC2 SERVER
+                                                    │
+                                                    │ Gets notified
+                                                    │ Pulls new images
+                                                    │ Restarts containers
+                                                    │ App is updated! ✅
+
+Your Actual Files Explained
+File 1: .github/workflows/build-push.yml
+yaml
+# NAME of this workflow
+name: Build and Push Docker Images
+# WHEN should this run?
+on:
+  push:
+    branches: [ main ]    # Run when code pushed to main branch
+  pull_request:
+    branches: [ main ]    # Run when PR created to main
+# WHAT should it do?
+jobs:
+  build-and-push:           # Job name
+    runs-on: ubuntu-latest  # Use GitHub's free Ubuntu server
+    steps:
+      # Step 1 - Download your code onto GitHub's server
+      - name: Checkout code
+        uses: actions/checkout@v3
+      # Step 2 - Login to Docker Hub using your secrets
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}  # From GitHub Secrets
+          password: ${{ secrets.DOCKER_PASSWORD }}  # From GitHub Secrets
+      # Step 3 - Build backend and push to Docker Hub
+      - name: Build and push backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend              # Use backend folder as source
+          file: ./docker/backend/Dockerfile  # Use this Dockerfile
+          push: true                      # Actually push to Docker Hub
+          tags: chandangadewar/tastyhub-backend:latest  # Image name
+      # Step 4 - Build frontend and push to Docker Hub  
+      - name: Build and push frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend             # Use frontend folder as source
+          file: ./docker/frontend/Dockerfile
+          push: true
+          tags: chandangadewar/tastyhub-frontend:latest
+
+File 2: .github/workflows/deploy.yml
+yaml
+name: Deploy to EC2
+# WHEN? Only after build-push workflow succeeds
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Only run if previous workflow SUCCEEDED
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      # SSH into your EC2 server and run commands
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}      # Your EC2 IP address
+          username: ubuntu                    # EC2 username
+          key: ${{ secrets.EC2_SSH_KEY }}    # Your .pem key
+          script: |
+            cd /home/ubuntu/tasty-hub/docker
+            docker-compose pull              # Pull latest images
+            docker-compose up -d             # Restart containers
+            docker system prune -f           # Clean old images
+```
+---
+## GitHub Secrets — Why and How
+### Why Secrets?
+```
+❌ WRONG - Putting password in code:
+username: chandangadewar
+password: mypassword123
+↑ Anyone can see this on GitHub!
+↑ Hackers can steal your Docker Hub account!
+✅ RIGHT - Using secrets:
+username: ${{ secrets.DOCKER_USERNAME }}
+password: ${{ secrets.DOCKER_PASSWORD }}
+↑ Password stored safely in GitHub
+↑ Never visible in code
+↑ Only used during workflow run
+```
+
+### How Secrets Work:
+```
+You add secret in GitHub Settings
+        ↓
+GitHub encrypts and stores it
+        ↓
+During workflow, GitHub decrypts it
+        ↓
+Used in the workflow step
+        ↓
+Never visible in logs or code
+```
+
+---
+## What Happens When You Push Code
+```
+Day 1 - Initial push
+git push
+→ GitHub Actions runs
+→ Takes 4-5 mins (downloading tools etc)
+→ Images pushed to Docker Hub ✅
+
+Day 2 - You fix a bug
+git push
+→ GitHub Actions runs
+→ Takes 3-4 mins (some caching)
+→ New images pushed to Docker Hub ✅
+→ EC2 automatically gets new version ✅
+
+Day 3 - You add new feature
+git push
+→ Same thing happens automatically
+→ You don't do ANYTHING manually ✅
+```
+
+---
+## Problems You Faced & What You Learned
+### Problem 1 — Dockerfile not found
+```
+Error: failed to read dockerfile: open Dockerfile
+       no such file or directory
+Why it happened:
+workflow said dockerfile: ./docker/backend/Dockerfile
+but correct key is  file: ./docker/backend/Dockerfile
+What you learned:
+→ GitHub Actions uses exact parameter names
+→ dockerfile: is wrong, file: is correct
+```
+### Problem 2 — react-scripts permission denied
+```
+Error: sh: 1: react-scripts: Permission denied
+Why it happened:
+→ npm install creates react-scripts with permissions
+→ COPY . . command overwrites those permissions
+→ react-scripts loses execute permission
+What you learned:
+→ Always chmod +x AFTER COPY command
+→ File permissions matter in Linux/Docker
+→ Windows doesn't care about permissions
+  but Linux does!
+```
+### Problem 3 — Everything up to date
+```
+git push
+→ Everything up-to-date (no workflow triggered!)
+Why it happened:
+→ No new commit was made
+→ GitHub only triggers on NEW commits
+
+What you learned:
+→ Always do git add → git commit → git push
+→ Never skip git commit step!
+→ git commit --allow-empty forces empty commit
+
+Interview Explanation
+When someone asks "Tell me about your CI/CD pipeline":
+	"I set up a fully automated CI/CD pipeline using GitHub Actions for my Tasty Hub project. Whenever I push code to the main branch, GitHub Actions automatically triggers a workflow that runs on an Ubuntu server. It builds Docker images for both my React frontend and Node.js backend using their respective Dockerfiles, then pushes those images to Docker Hub. I also set up a deployment workflow that automatically SSHs into the AWS EC2 server, pulls the latest images and restarts the containers. I stored sensitive credentials like Docker Hub password and EC2 SSH key as GitHub Secrets so they're never exposed in the code. The whole process takes about 3-5 minutes and requires zero manual intervention."
+
+Summary — Key Concepts
+Concept	Simple Explanation
+GitHub Actions	Free robot that runs tasks automatically
+Workflow file	Instructions for the robot
+Runner	Free Ubuntu server GitHub provides
+Secrets	Safe place to store passwords
+Docker Hub	Warehouse for your Docker images
+CI	Auto build and test on every push
+CD	Auto deploy to server after CI
+uses:	Pre-built tools made by others
+${{ secrets.X }}	Way to use stored secrets
+Without CI/CD — Manual Way Every Time 😤
+Every single time you change code:
+1. Open terminal
+2. docker build -t tastyhub-backend ./backend
+3. docker build -t tastyhub-frontend ./frontend
+4. docker tag tastyhub-backend chandangadewar/tastyhub-backend:latest
+5. docker tag tastyhub-frontend chandangadewar/tastyhub-frontend:latest
+6. docker login
+7. docker push chandangadewar/tastyhub-backend:latest
+8. docker push chandangadewar/tastyhub-frontend:latest
+9. ssh into EC2 server
+10. docker pull chandangadewar/tastyhub-backend:latest
+11. docker pull chandangadewar/tastyhub-frontend:latest
+12. docker-compose down
+13. docker-compose up -d
+= 13 steps every time 😫
+= 20-30 minutes every time
+= One mistake = app goes down
+
+With CI/CD — Your Way 😎
+Every single time you change code:
+1. git push
+= 1 step every time 🎉
+= 3-5 minutes automatically
+= Zero mistakes possible
+
+What Steps You Did To Set It Up
+One time setup only:
+Step 1 → Created 2 workflow files
+         .github/workflows/build-push.yml
+         .github/workflows/deploy.yml
+
+Step 2 → Added 2 GitHub Secrets
+         DOCKER_USERNAME
+         DOCKER_PASSWORD
+
+Step 3 → Fixed Dockerfile permissions
+         chmod +x after COPY
+
+Step 4 → git push
+         Everything automated forever! ✅
+That's it! One time setup = lifetime automation 😊
+
+
+
+Issues You Solved & Why:
+Problem	Cause	Fix
+bcrypt error	Windows compiled binary won't run on Linux Docker	Switch to bcryptjs
+Port 3306 conflict	Local MySQL using same port	Kill local MySQL process
+react-scripts permission	COPY overwrites file permissions	chmod +x after COPY
+Dockerfile not found	Wrong path in workflow	Use file: instead of dockerfile:
+ENV warning	Old format used	Use ENV KEY=VALUE format
+
+
+Tomorrow Phase 3 → AWS EC2
+ 1. Login AWS Console 
+2. Launch EC2 t2.micro free tier 
+3. Download .pem SSH key
+ 4. Connect to EC2 via SSH 
+5. Install Docker on EC2
+ 6. Clone repo or pull images 
+7. Run docker-compose up 
+8. App live on public IP 🌍
+ 9. Add EC2_HOST + EC2_SSH_KEY to GitHub Secrets for auto deploy
+
+
+
+Key things to remember: - Always cd into docker/ folder - Never use down -v unless resetting DB - git add → commit → push (all 3 steps!) - Re-run job uses old code, always push new commit
+
+
+git pull origin main --allow-unrelated-histories
+cd "C:\Users\chand\Downloads\Tasty hub"
+git add .
+git commit -m "fix: change MySQL Docker port to 3307 to avoid local conflict"
+git push
+
+
+Change Admin Password — 2 Ways
+
+Way 1 — For Docker (Permanent)
+Step 1 — Generate new hash:
+powershell
+docker exec -it tastyhub-backend node -e "const bcrypt = require('bcryptjs'); bcrypt.hash('yournewpassword', 10).then(h => console.log(h))"
+Step 2 — Copy the hash it prints
+Step 3 — Update database.sql:
+sql
+INSERT IGNORE INTO admins (username, password) 
+VALUES ('admin', 'PASTE_NEW_HASH_HERE');
+Step 4 — Update in running Docker MySQL:
+powershell
+docker exec -it tastyhub-mysql mysql -u root -p
+sql
+USE restaurant_db;
+SET SQL_SAFE_UPDATES = 0;
+UPDATE admins SET password = 'PASTE_NEW_HASH_HERE' WHERE username = 'admin';
+SET SQL_SAFE_UPDATES = 1;
+Type exit
+
+Way 2 — For Local MySQL (Without Docker)
+Step 1 — Install bcryptjs temporarily:
+powershell
+cd backend
+node -e "const bcrypt = require('bcryptjs'); bcrypt.hash('yournewpassword', 10).then(h => console.log(h))"
+Step 2 — Open MySQL Workbench → run:
+sql
+USE restaurant_db;
+SET SQL_SAFE_UPDATES = 0;
+UPDATE admins SET password = 'PASTE_NEW_HASH_HERE' WHERE username = 'admin';
+SET SQL_SAFE_UPDATES = 1;
+```
+---
+## Easiest Way — Remember This:
+```
+Current password → admin123
+Current hash     → $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
+This is a UNIVERSAL bcrypt hash for "password"
+Always works with bcrypt and bcryptjs ✅
+
+
+
+
+Change Password to admin@321
+Step 1 — Generate hash for admin@321
+Run this in VS Code terminal:
+powershell
+docker exec -it tastyhub-backend node -e "const bcrypt = require('bcryptjs'); bcrypt.hash('admin@321', 10).then(h => console.log(h))"
+```
+It will print something like:
+```
+$2b$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Copy that hash!
+
+Step 2 — Update database.sql
+Replace admin INSERT line with new hash:
+sql
+INSERT IGNORE INTO admins (username, password) 
+VALUES ('admin', 'PASTE_NEW_HASH_HERE');
+
+Step 3 — Update in running Docker:
+powershell
+docker exec -it tastyhub-mysql mysql -u root -p
+sql
+USE restaurant_db;
+SET SQL_SAFE_UPDATES = 0;
+UPDATE admins SET password = 'PASTE_NEW_HASH_HERE' WHERE username = 'admin';
+SET SQL_SAFE_UPDATES = 1;
+exit
+```
+---
+### Step 4 — Now login with:
+```
+Username → admin
+Password → admin@321
+Generate the hash first and paste what it prints! 😊
+
+
+
+
+
+Goal
+Right now → App runs only on YOUR laptop
+After Phase 3 → App live on INTERNET
+               Anyone can access it worldwide!
+
+Complete Steps
+Step 1 → Login to AWS Console
+         aws.amazon.com
+         Free tier account ✅ (you have it)
+
+Step 2 → Launch EC2 Instance
+         Service → EC2 → Launch Instance
+         Name: tasty-hub-server
+         OS: Ubuntu 22.04
+         Type: t2.micro (FREE tier)
+         Download .pem key file
+
+Step 3 → Configure Security Groups
+         Allow ports:
+         - 22   (SSH)
+         - 80   (HTTP)
+         - 443  (HTTPS)
+         - 5000 (Backend API)
+
+Step 4 → Connect to EC2 via SSH
+         ssh -i key.pem ubuntu@YOUR_EC2_IP
+
+Step 5 → Install Docker on EC2
+         sudo apt update
+         sudo apt install docker.io
+         sudo apt install docker-compose
+
+Step 6 → Pull images from Docker Hub
+         docker pull chandangadewar/tastyhub-backend:latest
+         docker pull chandangadewar/tastyhub-frontend:latest
+
+Step 7 → Run docker-compose on EC2
+         App live on EC2 public IP! 🎉
+
+Step 8 → Add Secrets to GitHub
+         EC2_HOST → your EC2 public IP
+         EC2_SSH_KEY → your .pem key content
+         
+Step 9 → Auto deploy works!
+         git push → GitHub Actions → 
+         builds images → deploys to EC2
+         automatically! ✅
+
+Time Estimate
+Step 1-2 → Launch EC2        → 15 mins
+Step 3   → Security Groups   → 10 mins
+Step 4-5 → Install Docker    → 15 mins
+Step 6-7 → Deploy app        → 15 mins
+Step 8-9 → Auto deploy setup → 15 mins
+Total                        → ~1 hour
+
+After Phase 3 Your App Will Be:
+Before → http://localhost (only you can see)
+After  → http://YOUR_EC2_IP (whole world can see!) 🌍
+
+
+ssh -i "C:\Users\chand\Downloads\key.pem" ubuntu@43.204.24.251
+connected
+
+Your terminal should show:
+ubuntu@ip-172-xx-xx-xx:~$
+
+Step 4 — Install Docker on EC2
+Run these commands one by one:
+bash
+sudo apt update
+Wait for it to finish, then:
+bash
+sudo apt install -y docker.io docker-compose
+Wait for it to finish (2-3 mins), then:
+bash
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ubuntu
+Then logout and login again:
+bash
+exit
+powershell
+ssh -i "C:\Users\chand\Downloads\key.pem" ubuntu@43.204.24.251
+Then verify:
+bash
+docker --version
+docker-compose --version
+Tell me what versions show! 😊
+done docker --version docker-compose --version Docker version 28.2.2, build 28.2.2-0ubuntu1~24.04.1 docker-compose version 1.29.2, build unknown ubuntu@ip-172-31-38-73:~$
+13:16
+🎉 Docker is installed on EC2!
+
+Step 5 — Clone Your Project on EC2
+bash
+git clone https://github.com/Chandangadewar/Tasty-hub-app.git
+cd Tasty-hub-app
+
+Step 6 — Create .env file on EC2
+bash
+nano docker/.env
+```
+Paste this inside:
+```
+DB_PASSWORD=your_mysql_password
+SESSION_SECRET=tastyhub_secret_123
+Press Ctrl+X → Y → Enter to save!
+
+Step 7 — Run the app!
+bash
+cd docker
+docker-compose up -d
+Wait 2-3 minutes then check:
+bash
+docker-compose ps
+```
+Then open browser on your laptop:
+```
+http://43.204.24.251
+
