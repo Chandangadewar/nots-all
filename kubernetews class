@@ -1,0 +1,1786 @@
+Creating EKS -->
+
+Create cluster
+custom config
+eks auto mode off
+name -any[cluster]
+create I am role --> eks cluster policy
+
+1.34 version
+
+
+select security group
+ipv4
+
+public and private
+
+afterre creation of cluster
+goto comput setting
+add node group
+
+attach policy worker node
+and minimal policy
+
+added node group
+
+change instance c7i
+
+
+
+create ec 2 -- > to access this cluster
+isntance type
+c7i large
+
+config storage 
+20
+
+run -->
+sudo apt update
+cube ctl [command for your cluster]
+
+:Install kubectl Download the latest release with the command:
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" --> command
+
+echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+chmod +x kubectl
+mkdir -p ~/.local/bin
+mv ./kubectl ~/.local/bin/kubectl
+
+kubectl version --client
+
+Install AWS CLI on Ubuntu ->
+
+snap install aws-cli --classic
+aws configure
+aws secret 
+acces key
+
+: Log In Into EKS cluster
+aws eks update-kubeconfig --name {replace cluster name} --> after creating cluster
+
+2 instance get launched
+
+kubectl get nodes --> 
+to get any object run command {kubectl get}
+
+this is worker node
+
+worker node use case -->ec2
+eks use case --> eks cluster
+
+
+
+
+History-
+
+  apt update
+    2  curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    3  echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+    4  sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    5  chmod +x kubectl
+    6  mkdir -p ~/.local/bin
+    7  mv ./kubectl ~/.local/bin/kubectl
+    8  kubectl version --client
+    9  snap install aws-cli --classic
+   10  aws configure
+   11  aws eks update-kubeconfig --name cluster-eks
+   12  aws eks update-kubeconfig --name https://57587BE1594E8A47D28325A93304B822.gr7.ap-south-1.eks.amazonaws.com
+   13  aws eks update-kubeconfig --name cluster-eks
+   14  aws eks update-kubeconfig --name cluster-eks --region ap-south-1
+   15  kubectl get node
+   16  aws eks update-kubeconfig --name cluster-eks --region ap-south-1
+   17  kubectl get node
+   18  clear
+   19  aws eks update-kubeconfig --name cluster-eks 
+   20  aws eks update-kubeconfig --name cluster-eks --region ap-south-1
+   21  kubectl get node
+   22  aws configure list
+   23  aws eks update-kubeconfig --name cluster-eks 
+   24  kubectl --version
+   25  kubectl -version
+   26  kubectl version --client
+   27  aws eks update-kubeconfig --name cluster-eks 
+   28  aws eks update-kubeconfig --name cluster-eks --region ap-south-1
+   29  kubectl cluster-info
+   30  kubectl get nodes
+
+
+for node group
+
+
+for eks cluster
+
+
+
+same creating eks as day 1
+
+Pods are the smallest deployable units of computing that you can create and manage in Kubernetes.
+
+ 
+Pods are the smallest deployable units of computing that you can create and manage in Kubernetes.
+
+From <https://kubernetes.io/docs/concepts/workloads/pods/> 
+
+kubectl api-resources --> 
+to discover and list all the API resources that are supported by the Kubernetes API server in your cluster
+
+
+pod example-->
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+spec:
+  containers:
+  - name: nginx                 [list]
+    image: nginx:1.14.2
+    ports:
+    - containerPort: 80
+
+
+created file vim pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+  labels:
+    app: nginx
+spec:
+  containers:
+    - name: mycontainer
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+
+ -->kubectl apply -f pod.yaml
+--> kubectl get pods
+--> kubectl get  pods -o wide
+--> kubectl describe pod [pod name]
+
+Kubernetes services of three types:
+
+	1. Cluster IP --> Internal [within cluster] --> used for pod to pod communication. [Default service]
+	2. Node Port --> internal and external --> used for dev and test environment where we specify port number. range - 30000 - 32767
+	
+	3. Load Balancer --> internal and external --> used for production environment we can connect with domain name.
+
+Created service-->
+
+--> vim cip-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+--> kubectl apply -f cip-service.yaml
+--> kubectl get svc
+
+didn’t exposed  after curl cluster-IP
+
+so changes in 
+cip-service.yaml
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  type: NodePort
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      nodePort: 31000
+
+--> kubectl apply -f cip-service.yaml
+--> kubectl get svc
+
+after pasted public ip of one of two nodes which are into ec2 instance
+public ip : 31000
+ then error 
+then changes security group of that node to all traffic ipv4
+output-
+Welcome to nginx
+
+
+
+
+history-
+
+    1  apt update -y
+    2  curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    3  echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+    4  sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    5  chmod +x kubectl
+    6  mkdir -p ~/.local/bin
+    7  mv ./kubectl ~/.local/bin/kubectl
+    8  kubectl version --client
+    9  snap install aws-cli --classic
+   10  aws eks update-kubeconfig --name cluster
+   11  aws configure
+   12  aws eks update-kubeconfig --name cluster
+   13  kubectl cluster -info
+   14  kubectl get nodes
+   15  kubectl api-resources
+   16  vim pod.yaml
+   17  kubectl apply -f pod.yaml
+   18  ls
+   19  kubectl apply -f pod.yaml
+   20  vim pod.yaml
+   21  kubectl apply -f pod.yaml
+   22  kubectl get pods
+   23  kubectl get pods -o wide
+   24  kubectl describe pod
+   25  vim cip-service.yaml
+   26  kubectl apply -f cip-service.yaml
+   27  kubectl get svc
+   28  vim cip-service.yaml
+   29  kubectl apply -f cip-service.yaml
+   30  kubectl get svc
+   31  history
+
+
+task for loadbalancer as we did for nodeport
+
+again created pod as I delted all
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: loadbalancer-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+kubectl get svc - to check service
+Then pasted link of my loadbalancer service on browser --> Its Dns
+
+
+
+
+
+  
+	
+
+
+
+
+
+
+
+
+
+kubectl exec -it my-pod -- /bin/bash
+go inside pod
+exit --> to exit
+
+rm -rf service.yaml --> to delete service
+
+
+kubectl describe pod my-app 
+
+
+-->
+vim multi-pod
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-app
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.14.2
+      ports:
+        - containerPort: 80
+
+    - name: java
+      image: openjdk:17
+      command: ["tail", "-f", "/dev/null"]
+      ports:
+        - containerPort: 8080
+      
+
+    - name: mysql
+      image: mariadb:latest
+      env:
+        - name: MYSQL_ROOT_PASSWORD    
+          value: redhat
+      ports:
+        - containerPort: 3306
+
+-->kubectl apply -f multi-pod
+-->  kubectl get pods
+-->ErrImagePull due to image download failure.
+
+-->
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-app
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.14.2
+      ports:
+        - containerPort: 80
+
+    - name: java
+      image: eclipse-temurin:17       or 
+    openjdk:17.0.1-jdk-slim
+
+From <https://hub.docker.com/layers/library/openjdk/17.0.1-jdk-slim/images/sha256-565d3643a78a657ca03e85c110af9579a07e833d6bcc14f475249c521b5c5d74> 
+
+        ---> Changes Here
+      command: ["tail", "-f", "/dev/null"]
+      ports:
+        - containerPort: 8080
+      
+
+    - name: mysql
+      image: mariadb:latest
+      env:
+        - name: MYSQL_ROOT_PASSWORD    
+          value: redhat
+      ports:
+        - containerPort: 3306
+
+
+
+
+
+openjdk:17.0.1-jdk-slim eclipse-temurin:17 why this are working and that one not explain in brief
+Here is the exact brief explanation why:
+
+✅ Why openjdk:17 Failed but openjdk:17.0.1-jdk-slim and eclipse-temurin:17 Worked
+Reason 1 — openjdk:17 image DOES NOT EXIST on Docker Hub anymore
+Docker Hub removed many old openjdk:* tags.
+✔ openjdk:17.0.1-jdk-slim exists
+❌ openjdk:17 does NOT exist (returns "not found")
+So Kubernetes cannot pull it → ErrImagePull.
+
+✅ Reason 2 — Architecture Support Differences (x86 vs ARM)
+AWS EKS worker nodes = ARM64 or x86_64
+✔ Working images (multi-arch)
+	• openjdk:17.0.1-jdk-slim
+	• eclipse-temurin:17
+➡ These images support both x86_64 and ARM64.
+❌ Failing image (missing ARM64 build)
+	• openjdk:17
+➡ Does NOT have ARM64 support, only x86_64 (and the tag was removed).
+So containerd on ARM node cannot pull it.
+
+📌 Simple Reason Summary (One-Line)
+openjdk:17 tag doesn’t exist and doesn’t support ARM64.
+The other images exist AND support multiple architectures, so they work.
+
+If you want, I can show you how to check architecture support using:
+
+docker manifest inspect <image>
+Just say yes.
+
+replication controller
+
+vim rc.yaml
+
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: nginx
+spec:
+  replicas: 3
+  selector:
+    app: nginx
+  template:
+    metadata:
+      name: nginx
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+
+
+--> kubectl apply -f rc.yaml
+-->kubectl get rc
+-->kubectl get pods
+
+
+
+
+Math expression in kubernetes.
+
+Replication Set -
+vim rs.yaml
+
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: my-rs
+spec: 
+  replicas: 5
+  selector: 
+    matchLabels:
+      app: my-app
+    matchExpressions:
+    - {key: app, operator: In, values: ["my-app"]}
+  template: 
+    metadata:
+      labels:
+        app: my-app
+    spec: 
+      containers: 
+        - name: nginx
+          image: nginx:latest
+
+--> kubectl apply -f rs.yaml
+--> kubectl get rs
+--> kubectl get pods
+
+
+
+
+✅ 1. operator: In
+Means the label must match one of the values.
+
+matchExpressions:
+- key: app
+  operator: In
+  values: ["web", "api"]
+✔ Matches:
+	• app=web
+	• app=api
+❌ Does NOT match:
+	• app=db
+	• app=test
+	• label missing
+
+❌ 2. operator: NotIn
+Means the label must NOT match any value in the list.
+
+matchExpressions:
+- key: app
+  operator: NotIn
+  values: ["db", "cache"]
+✔ Matches:
+	• app=web
+	• app=api
+	• app=frontend
+❌ Does NOT match:
+	• app=db
+	• app=cache
+
+🟢 3. operator: Exists
+Means the label key must exist, value does not matter.
+
+matchExpressions:
+- key: region
+  operator: Exists
+✔ Matches:
+	• region=us
+	• region=eu
+	• region=india
+❌ Does NOT match:
+	• label not present on node or pod
+
+🔴 4. operator: DoesNotExist
+The label key must NOT exist.
+
+matchExpressions:
+- key: region
+  operator: DoesNotExist
+✔ Matches:
+	• nodes/pods without a region label
+❌ Does NOT match:
+	• If region label exists at all
+
+🔼 5. operator: Gt (Greater Than)
+Used for numeric comparison.
+
+matchExpressions:
+- key: cpu
+  operator: Gt
+  values: ["4"]
+✔ Matches: cpu=5, cpu=8, cpu=10
+❌ Does NOT match: cpu=4, cpu=2
+	Value must be stored as a string, but Kubernetes treats it as number.
+
+🔽 6. operator: Lt (Less Than)
+Label value must be less than given value.
+
+matchExpressions:
+- key: memory
+  operator: Lt
+  values: ["16"]
+✔ Matches: memory=8, memory=12
+❌ Does NOT match: memory=16, memory=32
+
+⭐ SUPER SIMPLE RECAP
+Operator	Meaning
+In	value must be inside list
+NotIn	value must NOT be inside list
+Exists	label key must exist
+DoesNotExist	label key must NOT exist
+Gt	label value > X
+Lt	label value < X
+
+🔥 Real Examples from Exam
+Example 1 — Pod must go only to nodes with env=prod or env=stage
+
+matchExpressions:
+- key: env
+  operator: In
+  values: ["prod", "stage"]
+Example 2 — Pod must run only on nodes WITHOUT GPU
+
+operator: DoesNotExist
+Example 3 — Node must have more than 4 CPUs
+
+operator: Gt
+values: ["4"]
+
+
+
+
+
+
+canary deployment
+bluegreen deployment
+
+
+Rolling update - to avoid downtime
+Max Unavailabel - to manage more at once
+
+
+
+  #rolling update
+ apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 7
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.14.2
+          ports:
+            - containerPort: 80
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 2
+  
+
+
+
+
+
+⭐ 1️⃣ Apply the Deployment
+
+kubectl apply -f nginx-deployment.yaml
+
+⭐ 2️⃣ Check the Deployment
+
+kubectl get deployments
+To see detailed info:
+
+kubectl describe deployment nginx-deployment
+
+⭐ 3️⃣ Check ReplicaSets
+
+kubectl get rs
+
+⭐ 4️⃣ Check Pods
+
+kubectl get pods
+Pods will show 7 running because you set replicas: 7.
+
+⭐ 5️⃣ Verify Rolling Update Strategy
+
+kubectl rollout status deployment/nginx-deployment
+
+⭐ 6️⃣ Update Image (rolling update will start)
+
+kubectl set image deployment/nginx-deployment nginx=nginx:1.16.0
+Check rollout:
+
+kubectl rollout status deployment/nginx-deployment
+
+⭐ 7️⃣ Rollback (if update fails)
+
+kubectl rollout undo deployment/nginx-deployment
+
+⭐ 8️⃣ Delete the Deployment
+
+kubectl delete -f nginx-deployment.yaml
+OR directly:
+
+	kubectl delete deployment nginx-deployment
+ 
+
+
+
+
+StateFul Sets ->
+
+mostly use for database.
+
+same endpoint if one pod is terminated the other used will have same endpoint.
+
+MySQL StatefulSet in Kubernetes (Scalable & Production-Style)
+A StatefulSet is used for stateful applications like MySQL, where:
+	• Each replica needs its own persistent volume
+	• Each pod gets a stable network identity
+	• Data must not be lost if pods restart
+	• Scaling should create new DB replicas safely
+
+⭐ Architecture Overview
+Components:
+	1. Headless Service → Provides stable DNS for MySQL pods
+	2. StatefulSet → Creates mysql-0, mysql-1, mysql-2
+	3. PersistentVolumeClaim Template → Gives each pod its own disk
+	4. ConfigMap (optional) → Custom MySQL configuration
+
+
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: 
+  name: my-sts 
+spec: 
+  serviceName: mysql-service   # Required for StatefulSet
+  selector:
+    matchLabels:
+      app: mysql
+  replicas: 5
+  template: 
+    metadata:
+      labels: 
+        app: mysql
+    spec: 
+      containers:
+        - name: mysql
+          image: mysql:8
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: redhat123
+
+History->
+
+  vim state.yaml
+    5  kubectl apply -f state.yaml
+    6  kubectl get pods
+    7  kubectl delete pod my-sts-0
+    8  kubectl get pods
+    9  kubectl delete pod my-sts-4
+   10  kubectl get pods
+   11  history
+controlplane:~$ 
+
+
+
+
+
+A ConfigMap is an API object used to store non-confidential data in key-value pairs. Pods can consume ConfigMaps as environment variables, command-line arguments, or as configuration files in a volume.
+
+#Security compliance of kubernetes
+
+
+vim config.yaml
+
+#configmap
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  name: my-config
+data:
+  USERNAME: "admin"
+
+kubectl get configmap
+
+
+
+#secret
+
+
+#secret
+apiVersion: v1 
+kind: Secret
+metadata:
+    name: my-secret
+data: 
+  PASSWORD: "cmVkaGF0"    #PASSSED THAT SECRET FROM COMMAND AFTER echo -n "redhat" | base64   
+
+echo -n "redhat" | base64
+copy encrypted
+kubectl apply -f secret.yaml
+kubectl get secret
+
+
+
+# pod
+vim pod.yaml
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: mysql
+    image: mysql:8
+    ports:
+    - containerPort: 3306
+    env:
+      - name: MYSQL_USERNAME
+        valueFrom: 
+          configMapKeyRef:
+            name: my-config  ##Taken FORM CONFIG
+            key: USERNAME    #Taken FORM CONFIG
+      - name: MYSQL_ROOT_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: my-secret
+            key: PASSWORD
+
+
+kubectl apply -f pod.yaml
+kubectl get pods
+
+
+
+
+
+In Kubernetes, a Persistent Volume (PV) is an actual piece of storage in the cluster, while a Persistent Volume Claim (PVC) is a user's request for that storage
+
+
+
+mkdir -p /mnt/data
+
+vim pv.yaml
+apiVersion: v1   # API version used for PersistentVolume resource
+kind: PersistentVolume   # Declares this manifest as a PersistentVolume (PV)
+metadata: 
+    name: my-vol   # Name of the PV (unique identifier in the cluster)
+
+spec: 
+  capacity: 
+    storage: 5Gi   # The size of the PV (5 Gigabytes)
+
+  volumeMode: Filesystem   # Specifies that the volume will be mounted as a filesystem (not raw block)
+
+  accessModes:
+      - ReadWriteOnce   # Only one node can mount this volume for read/write at a time
+
+  persistentVolumeReclaimPolicy: Retain   # What happens when the PVC is deleted:
+                                          # Retain → Keep the data
+                                          # Delete → Remove the PV and data
+                                          # Recycle → Wipe and make PV available again (deprecated)
+
+  storageClassName: rohit   # StorageClass name associated with this PV (used for dynamic provisioning)
+
+  local:
+    path: /mnt/data   # Path on the node’s local filesystem where data will be stored
+
+  nodeAffinity:   # Ensures the PV is only usable on specific nodes
+    required:
+      nodeSelectorTerms: 
+        - matchExpressions:
+            - key: kubernetes.io/hostname   # Node label key used for selection
+              operator: In                  # Operator meaning "must be in this list"
+              values: ["controlplane"]      # Only the node with hostname "controlplane" can use this PV
+
+
+->kubectl apply -f pv.yaml
+  kubectl get pv
+
+Persistent Volume Claim (PVC)
+->  vim pvc.yaml
+kubectl apply -f pvc.yaml
+
+apiVersion: v1   # API version for PersistentVolumeClaim resource
+kind: PersistentVolumeClaim   # Declares this manifest as a PVC
+metadata: 
+   name: my-pvc   # Name of the PVC (unique identifier in the namespace)
+
+spec: 
+ accessModes:
+   - ReadWriteOnce   # Access mode: the PVC requires a volume that can be mounted read/write by only one node
+
+ resources:
+   requests:
+     storage: 5Gi   # The PVC is requesting 5Gi of storage
+
+ storageClassName: rohit   # Must match the PV's storageClassName so that it binds correctly
+
+ volumeName: my-vol   # Explicitly binds this PVC to the PersistentVolume named "my-vol"
+
+ kubectl get pvc
+
+
+ vim pod.yaml
+->
+apiVersion: v1   # API version for Pod resource
+kind: Pod        # Declares this manifest as a Pod
+metadata: 
+  name: my-pod   # Name of the Pod
+
+spec:
+  containers:
+    - name: nginx   # Container name inside the Pod
+      image: nginx:latest   # Container image to run (latest Nginx)
+      ports:
+        - containerPort: 80   # Exposes port 80 (default HTTP port) inside the container
+
+      volumeMounts:   # Defines where to mount volumes inside the container
+        - mountPath: "/usr/share/nginx/html"   # Path inside container where volume will be mounted
+          name: my-vol   # Must match the volume name defined below
+
+  volumes:   # Volumes available to the Pod
+    - name: my-vol   # Name of the volume (referenced above in volumeMounts)
+      persistentVolumeClaim:
+        claimName: my-pvc   # PVC name → binds this volume to the PVC "my-pvc"
+ 
+->kubectl apply -f pod.yaml
+->  kubectl get pods
+kubectl descibe pod my-pod
+kubectl exec -it my-pod -- /bin/bash
+cd /usr/share/nginx/html/
+ls
+cat > index.html
+h1 hello h1
+exit
+kubectl get pods -o wide
+curl ip
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+history->
+ 4  mkdir -p /mnt/data
+    5  vim pv.yaml
+    6  kubectl appy -f pv.yaml 
+    7  kubectl apply -f pv.yaml 
+    8  kubectl get pv
+    9  vim pvc.yaml
+   10  ls
+   11  kubectl apply -f pvc.yaml
+   12  kubectl get pv
+   13  kubectl get pvc
+   14  vim pod.yaml
+   15  kubectl apply -f pod.yaml 
+   16  kubectl get pods
+   17  kubectl descibe pod my-pod
+   18  kubectl describe pod my-pod
+   19  kubectl exec -it my-pod -- /bin/bash
+   20  kubectl get pods -o wide
+   21  curl  192.168.0.6
+   22  kubectl exec -it my-pod -- /bin/bash
+   23  kubectl get pods -o wide
+   24  curl 192.168.0.6 
+   25  curl  192.168.0.6
+   26  kubectl exec -it my-pod -- /bin/bash
+   27  kubectl get pods -o wide
+   28  curl 192.168.0.6
+   29  ls
+   30  kubectl delete pod pod.yaml
+   31  ls
+   32  kubectl delete pod.yaml
+   33  kubectl delete pod  pod.yaml
+   34  kubectl get pods
+   35  kubectl delete pod my-pod
+   36  ls
+   37  vim pod.yaml
+   38  kubectl apply -f pod.yaml
+   39  kubectl get pods -o wide
+   40  curl 192.168.0.7
+   41  kubectl apply -f pod.yaml
+   42  kubectl get pods
+   43  vim pod.yaml
+   44  kubectl apply -f pod.yaml
+   45  kubectl get pods
+   46  kubectl describe my-pod2
+   47  kubectl describe pod  my-pod2
+   48  kubectl get ppods
+   49  kubectl get pods
+   50  kubectl get pods -o wide
+   51  ~kubectl get pods -o wide
+   52  kubectl get pods -o wide
+   53  curl 192.168.0.8 
+
+	
+With autoscaling, you can automatically update your workloads in one way or another. This allows your cluster to react to changes in resource demand more elastically and efficiently.
+In Kubernetes, you can scale a workload depending on the current demand of resources. This allows your cluster to react to changes in resource demand more elastically and efficiently.
+When you scale a workload, you can either increase or decrease the number of replicas managed by the workload, or adjust the resources available to the replicas in-place.
+The first approach is referred to as horizontal scaling, while the second is referred to as vertical scaling.
+There are manual and automatic ways to scale your workloads, depending on your use case.
+
+
+
+Scaling workloads manually
+Kubernetes supports manual scaling of workloads. Horizontal scaling can be done using the kubectl CLI. For vertical scaling, you need to patch the resource definition of your workload.
+See below for examples of both strategies.
+
+	• Horizontal scaling: Running multiple instances of your app
+	• Vertical scaling: Resizing CPU and memory resources assigned to containers
+
+
+Scaling workloads automatically
+Kubernetes also supports automatic scaling of workloads, which is the focus of this page.
+The concept of Autoscaling in Kubernetes refers to the ability to automatically update an object that manages a set of Pods (for example a Deployment)
+
+
+
+Feature	HPA	VPA
+Scales pods count	✔ Yes	❌ No
+Scales CPU/Memory of pod	❌ No	✔ Yes
+Mode of scaling	Horizontal	Vertical
+Pod restart required?	❌ No	✔ Yes
+Best for	Stateless apps (web apps)	Stateful apps (DB, Jenkins)
+Works by monitoring	Metrics (CPU/Memory) / custom metrics	Actual resource usage
+If load increases	Add more pods	Increase resources of same pod
+
+From <https://chatgpt.com/c/698adab3-5c7c-83a9-9c87-9be1e8ab59ba> 
+
+
+
+
+
+vim deployment.yaml
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "200Mi"
+          limits:
+            cpu: "200m"
+            memory: "300Mi"
+kubectl get pods
+
+vim hpa.yaml
+
+
+#Create the Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nginx-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx-deployment
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+
+kubectl get hpa
+
+
+When we need single point of contact we use ingress.
+
+ 1. Introduction to Ingress
+	• Ingress is an API object that manages external access to services in a Kubernetes cluster.
+	• Provides:
+		○ HTTP/HTTPS routing
+		○ Path-based routing (/app1 → Service1, /app2 → Service2)
+		○ Host-based routing (app1.example.com → Service1, app2.example.com → Service2)
+	• Ingress requires an Ingress Controller (commonly NGINX Ingress Controller).
+	• ingress controller uses SSl/TLS  DNS .
+	
+
+
+
+
+
+
+
+
+
+vim app1-deploy.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app1
+  template:
+    metadata:
+      labels:
+        app: app1
+    spec:
+      containers:
+      - name: app1
+        image: hashicorp/http-echo
+        args:
+        - "-text=Hello from App1"
+        ports:
+        - containerPort: 5678
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app1-svc
+spec:
+  selector:
+    app: app1
+  ports:
+  - port: 80
+    targetPort: 5678
+
+
+kubectl apply -f app1-deploy.yaml
+
+vim app2-deploy.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app2
+  template:
+    metadata:
+      labels:
+        app: app2
+    spec:
+      containers:
+      - name: app2
+        image: hashicorp/http-echo
+        args:
+        - "-text=Hello from App2"
+        ports:
+        - containerPort: 5678
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app2-svc
+spec:
+  selector:
+    app: app2
+  ports:
+  - port: 80
+    targetPort: 5678
+
+
+kubectl apply -f app2-deploy.yaml
+
+kubectl get pods
+kubectl get svc
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+
+kubectl get pods -n ingress-nginx
+kubectl get svc -n ingress-nginx
+
+vim ingress.yaml
+kubectl apply -f ingress.yaml
+
+✅ Path-based Routing
+
+
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: path-based-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /app1
+        pathType: Prefix
+        backend:
+          service:
+            name: app1-svc
+            port:
+              number: 80
+      - path: /app2
+        pathType: Prefix
+        backend:
+          service:
+            name: app2-svc
+            port:
+              number: 80
+
+
+kubectl get ing
+
+-> load balancer is created in aws
+
+
+
+
+
+
+
+
+
+
+
+
+History->
+ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    2  echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+    3  sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+    4  chmod +x kubectl
+    5  mkdir -p ~/.local/bin
+    6  mv ./kubectl ~/.local/bin/kubectl
+    7  kubectl version --client
+    8  sudo apt install unzip -y
+    9  curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+   10  unzip awscliv2.zip
+   11  sudo ./aws/install
+   12  aws configure
+   13  aws eks update-kubeconfig --name cluster
+   14  kubectl get nodes
+   15  vim app1-deploy.yaml
+   16  kubectl apply -f app1-deploy.yaml 
+   17  vim app2-deploy.yaml
+   18  kubectl apply -f app2-deploy.yaml 
+   19  kubectl get pods
+   20  kubectl get svc
+   21  kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/cloud/deploy.yaml
+   22  kubectl get pods -n ingress-nginx
+   23  kubectl get svc -n ingress-nginx
+   24  vim ingress.yaml
+   25  kubectl apply -f ingress.yaml 
+   26  kubectl get ing
+
+
+
+
+
+
+
+	1. created database
+	2. then launched cluster
+	3. created node group
+	4. launched ec2
+	apt install mysql-client -y
+	5. docker --version
+	6. git clone
+	7. cd easycrud
+	8. cd backend
+	9. ls
+	10. rm -rf backend-pod.yaml
+	11. rm -rf backend-svc.yaml
+	12. cat dockerfile
+	13. docker login
+	14. mysql -h copied endpoint of databse -u admin -p
+	CREATE DATABASE student_db;
+	GRANT ALL PRIVILEGES ON springbackend.* TO 'username'@'localhost' IDENTIFIED BY 'your_password';
+	
+	
+	cd src /main/resources
+	vim appplication.properties
+	change databse and paste endpoint
+	cd../../..
+	docker  login
+	docker build  -t chandan240603/easycrud-backend .
+
+	docker push chandan240603/easycrud-backend
+	## docker run -d -p 8080:8080 chandan240603/easycrud-backend
+	
+	vim backend-pod.yaml
+	kubectl apply -f backend-pod.yaml
+	kubectl get pods
+	
+	vim backend-svc.yaml
+	kubectl apply -f
+	kubectl get svc
+	
+	cd frontend
+	vim .env
+	changed pasted from kubectl get svc loadbalancer endpoint
+	docker build . -t chandan240603/easycrud-frontend
+	docker push  chandan240603/easycrud-frontend
+	
+
+	
+	frontend deployement-yaml
+	change image name chandan240603/easycrud-frontend
+	change image name properly
+	chandan240603/easycrud-frontend
+	
+	
+	Again complete steps-
+	
+	Crated eks 
+	created rds
+	created ec2
+	
+	in ec2 
+	sudo apt update -y
+	sudo apt install mysql-client -y
+	install  docker
+	# Add Docker's official GPG key:
+	sudo apt update
+	sudo apt install ca-certificates curl
+	sudo install -m 0755 -d /etc/apt/keyrings
+	sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+	sudo chmod a+r /etc/apt/keyrings/docker.asc
+	
+	# Add the repository to Apt sources:
+	sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+	Types: deb
+	URIs: https://download.docker.com/linux/ubuntu
+	Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+	Components: stable
+	Signed-By: /etc/apt/keyrings/docker.asc
+	EOF
+	
+	sudo apt update
+	
+	-> sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+	
+	install kubernetes
+	curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+	 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+	echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+	sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+	
+	chmod +x kubectl
+	mkdir -p ~/.local/bin
+	mv ./kubectl ~/.local/bin/kubectl
+	
+	kubectl version --client
+	snap install aws-cli --classic
+	aws configure
+	aws eks update-kubeconfig --name {cluster-name}
+	
+	docker login -u chandan240603
+	
+	mysql -h <RDS-ENDPOINT> -u admin -p
+	put password which created while in database
+	modify database security group
+	
+	SHOW DATABASES;
+	CREATE DATABASE student_db;
+	USE student_db;
+	
+	CREATE TABLE students (
+	  id BIGINT NOT NULL AUTO_INCREMENT,
+	  name VARCHAR(255),
+	  email VARCHAR(255),
+	  course VARCHAR(255),
+	  student_class VARCHAR(255),
+	  percentage DOUBLE,
+	  branch VARCHAR(255),
+	  mobile_number VARCHAR(255),
+	  PRIMARY KEY (id)
+	);
+	
+	exit
+	
+	in backedn easyCrud 
+	cp src/main/resources/application.properties .
+	change database url and paste enpoint of our database 
+	and change username and password of our databse
+		like this ->
+		Update Configuration Values
+		Update the following values in the application.properties file:
+			• RDS Endpoint
+			• Database Name: student_db
+			• Database Username
+			• Database Password
+		server.port=8080
+spring.datasource.url=jdbc:mariadb://<RDS-EndPoint>:3306/student_db
+spring.datasource.username=<username>
+spring.datasource.password=<password>
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+		
+		From <https://github.com/pranavmisal1002/EasyCrud-Docker#-phase-1-database-setup-amazon-rds--mariadb> 
+		
+		 Build Backend Docker Image
+		Build the Docker image for the backend application and verify the image creation.
+		docker build -t <images-name>:<tag> <dockerfile-path>
+		
+		docker build  -t chandan240603/easycrud-backend .
+		image already exist in my dockerhub so not pushing it if want to push then
+		docker push chandan240603/easycrud-backend  -> use this
+		
+		verify -> docker images
+		
+		## docker run -d -p 8080:8080 chandan240603/easycrud-backend -- don’t run container
+		docker ps
+		 
+		kubectl apply -f backend-pod.yaml
+		kubectl get pods
+		
+		vim backend-svc.yaml
+		kubectl apply -f backend-svc.yaml
+		kubectl get svc
+		
+		go to frontend file
+		ls -a 
+		we will able to see .env
+		in env paste it when we get kubectl get svc
+		VITE_API_URL=http://<BACKEND_PUBLIC_IP>:8080/api
+		like this
+		
+		docker build  -t chandan240603/easycrud-frontend .
+		image already pushed I am not pushing again
+		if want to then use docker push  chandan240603/easycrud-frontend
+		
+		
+		 ## docker run -d -p 80:80 chandan240603/easycrud-frontend - don’t do it with this
+		kubectl get svc
+		paste load balancer ip
+		app running
+		
+		
+		
+		
+		
+		
+		
+		
+	
+	
+	
+	
+	
+	
+	
+🟦 OPTION 1 — Create Your Own Kubernetes Cluster on EC2 (Using kubeadm)
+This is the BEST “real-world” alternative to EKS and is often used in interviews.
+✔ What you do:
+You will:
+	• Launch 2 or 3 EC2 instances
+	• Install Docker
+	• Install Kubernetes (kubeadm, kubelet, kubectl)
+	• Create your own cluster
+	• Deploy your app (pod + service + deployment)
+	• Install MySQL or MongoDB inside the cluster
+✔ This becomes a FULL DevOps project without EKS.
+
+🔥 Step-by-Step (Short Version)
+1️⃣ Create 2 EC2 Ubuntu servers
+	• 1 master node
+	• 1 worker node
+Open ports:
+	• 6443
+	• 10250
+	• 30000–32767
+	• SSH (22)
+
+2️⃣ Install Docker
+
+sudo apt update
+sudo apt install docker.io -y
+
+3️⃣ Install Kubernetes Components
+
+sudo apt install -y apt-transport-https curl
+sudo curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+sudo apt update
+sudo apt install -y kubeadm kubelet kubectl
+
+4️⃣ Initialize Kubernetes Master
+
+sudo kubeadm init
+Copy the output:
+
+kubeadm join <master-ip>:6443 --token ... --discovery-token-ca-cert-hash sha256:...
+
+5️⃣ Configure kubectl
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+6️⃣ Install Network Add-on (Calico)
+
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+7️⃣ Join Worker Node
+On worker EC2:
+
+sudo kubeadm join <master-ip>:6443 --token .....
+
+8️⃣ Deploy Your Application
+Just apply like before:
+
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+
+9️⃣ Deploy MySQL/MongoDB in the cluster
+You can use:
+MySQL YAML
+
+kubectl apply -f mysql-deployment.yaml
+or
+MongoDB via Helm
+
+helm install mongo bitnami/mongodb
+
+🟩 OPTION 2 — Use Minikube (Local Laptop Kubernetes)
+Easiest way, no EC2, no cloud.
+Steps:
+
+minikube start
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+For MySQL:
+
+kubectl apply -f mysql.yaml
+
+🟧 OPTION 3 — Use “Kind” (Kubernetes in Docker)
+Super lightweight:
+
+kind create cluster
+kubectl apply -f deployment.yaml
+Good for practice + GitHub projects.
+
+🟦 Which one is best for you?
+Option	Difficulty	Used in Real Companies?	Good for Resume?
+EC2 + kubeadm	Medium	✔✔✔ Yes	⭐⭐⭐⭐
+Minikube	Easy	No	⭐⭐
+Kind	Easy	No	⭐⭐
+If you want a project better than your EKS one, choose:
+✅ EC2 + kubeadm + MySQL/Mongo inside cluster
+This becomes a full “self-managed Kubernetes cluster” project.
+
+🟣 If you want, I can give you:
+✔ Full project
+✔ All kubeadm commands
+✔ MySQL/Mongo full YAML
+✔ Architecture diagram
+✔ LoadBalancer without EKS
+✔ Resume-format project description
+✔ GitHub README
+Just tell me:
+👉 “Give full EC2 Kubernetes project with MySQL”
+or
+👉 “Give full EC2 Kubernetes project with MongoDB”
+full
+Great — I will give you the FULL Kubernetes project without using EKS, using EC2 + kubeadm + MySQL inside the cluster.
+This will be a complete, real DevOps project suitable for resume, GitHub, and interviews.
+
+🚀 PROJECT: Deploy Full-Stack App on Self-Managed Kubernetes Cluster on EC2 with MySQL Database
+This includes:
+✔ Kubernetes cluster created manually (kubeadm)
+✔ Dockerized backend
+✔ MySQL running inside Kubernetes
+✔ Deployment + Service (NodePort)
+✔ Complete YAML files
+✔ Architecture
+✔ Resume-ready description
+✔ Commands step-by-step
+
+🟦 1. ARCHITECTURE
+
+         AWS EC2 (Master Node)
+         ┌────────────────────────────┐
+         │ kubeadm master             │
+         │ API Server                 │
+         │ Scheduler                  │
+         └────────────────────────────┘
+                 ↑
+                 │ kubeadm join
+                 ↓
+         AWS EC2 (Worker Node)
+         ┌────────────────────────────┐
+         │ Pods + Deployments         │
+         │ - Backend App              │
+         │ - MySQL Database           │
+         └────────────────────────────┘
+
+                 │
+                 ▼
+         NodePort Service → Public Access
+
+🟦 2. Launch EC2 Instances
+Launch 2 Ubuntu EC2 Instances:
+	1. Master Node
+	2. Worker Node
+Allow ports:
+	• 6443
+	• 10250
+	• 30000–32767
+	• 22
+
+🟦 3. Install Docker on Both Nodes
+
+sudo apt update
+sudo apt install docker.io -y
+sudo systemctl enable docker
+
+🟦 4. Install Kubernetes Components (Both Nodes)
+
+sudo apt install -y apt-transport-https ca-certificates curl
+sudo curl -fsS https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
+sudo apt update
+sudo apt install -y kubeadm kubelet kubectl
+sudo swapoff -a
+
+🟦 5. Initialize Master Node
+
+sudo kubeadm init
+Copy the output:
+
+kubeadm join <master-ip>:6443 --token ... --discovery-token-ca-cert-hash sha256:...
+
+Configure kubectl on Master
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+🟦 6. Install Calico Network Plugin
+
+kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+🟦 7. Join Worker Node
+On worker EC2:
+
+sudo kubeadm join <master-ip>:6443 --token ... --discovery-token-ca-cert-hash sha256:...
+Check cluster:
+
+kubectl get nodes
+
+🟦 8. Deploy MySQL in Kubernetes
+mysql-pvc.yaml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+mysql-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: password123
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+
+mysql-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+  selector:
+    app: mysql
+Apply:
+
+kubectl apply -f mysql-pvc.yaml
+kubectl apply -f mysql-deployment.yaml
+kubectl apply -f mysql-service.yaml
+
+🟦 9. Deploy Your Backend App
+Example image:
+
+docker build -t chandan240603/myapp:backend .
+docker push chandan240603/myapp:backend
+
+backend-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: chandan240603/myapp:backend
+        env:
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_USER
+          value: "root"
+        - name: DB_PASS
+          value: "password123"
+        - name: DB_NAME
+          value: "yourdb"
+        ports:
+        - containerPort: 8080
+
+backend-service.yaml (NodePort)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: NodePort
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080
+Apply:
+
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f backend-service.yaml
+
+🟩 10. Access the Application
+Open browser:
+
+http://<EC2-worker-public-ip>:30080
+
+🟪 11. Resume Project Description
+Project: Kubernetes-Based Deployment of Containerized Application Using Self-Managed Cluster on AWS EC2
+	• Built and deployed a containerized backend application using Docker and Kubernetes.
+	• Provisioned a self-managed Kubernetes cluster using kubeadm on two AWS EC2 instances (1 master, 1 worker).
+	• Installed and configured Calico CNI for networking.
+	• Deployed MySQL database inside Kubernetes using Deployment + PVC + ClusterIP.
+	• Exposed backend using NodePort service for external access.
+	• Configured environment variables and Kubernetes Secrets for DB communication.
+	• Verified application functionality and database connectivity inside cluster.
+Tools:
+Docker, Kubernetes, kubeadm, EC2, MySQL, YAML, Linux, Networking.
+
+
