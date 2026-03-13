@@ -1,0 +1,2262 @@
+
+Final Project Goal
+
+AWS End-to-End DevOps Platform
+
+Provision a production-style AWS infrastructure using Terraform with:
+	• VPC
+	• Public & Private subnets
+	• Internet Gateway
+	• NAT Gateway
+	• Security Groups
+	• Application Load Balancer
+	• Auto Scaling Group
+	• EC2 instances
+	• Remote Terraform state (S3)
+	• State locking (DynamoDB)
+	• Terraform modules
+	• dev / stage / prod environments
+
+
+Terraform
+   │
+   ▼
+AWS Infrastructure
+(VPC, Subnets, EC2)
+   │
+   ▼
+Docker Containers
+   │
+   ▼
+Kubernetes Cluster
+   │
+   ▼
+CI/CD Pipeline
+   │
+   ▼
+Monitoring
+(Prometheus + Grafana)
+
+
+terraform structure
+
+devops-end-to-end-project
+│
+├ terraform
+│
+│  ├ modules
+│  │   └ vpc
+│  │       ├ main.tf
+│  │       ├ variables.tf
+│  │       └ outputs.tf
+│  │
+│  ├ environments
+│  │   ├ dev
+│  │   │   ├ main.tf
+│  │   │   └ terraform.tfvars
+│  │   │
+│  │   ├ stage
+│  │   │   ├ main.tf
+│  │   │   └ terraform.tfvars
+│  │   │
+│  │   └ prod
+│  │       ├ main.tf
+│  │       └ terraform.tfvars
+│  │
+│  └ provider.tf
+
+
+1) What This Project Is Solving
+In real companies, engineers must create cloud infrastructure automatically instead of clicking in the console.
+Terraform lets you define infrastructure as code:
+
+Code  →  Terraform  →  AWS Infrastructure
+Benefits:
+	• reproducible infrastructure
+	• version control in Git
+	• safe changes using plan/apply
+	• automation in CI/CD
+
+2) Final Architecture (What We Build)
+
+Internet
+   │
+Application Load Balancer
+   │
+Auto Scaling Group
+   │
+EC2 Instances
+   │
+Private Subnets
+   │
+VPC
+Supporting components:
+
+VPC
+├─ Public Subnet
+│   └─ Load Balancer
+│
+├─ Private Subnet
+│   └─ EC2 Instances
+│
+├─ Internet Gateway
+└─ NAT Gateway
+Terraform infrastructure state:
+
+S3 Bucket
+└─ terraform.tfstate
+
+DynamoDB
+└─ state locking
+
+3) Project Structure (Why It Matters)
+A clean structure shows DevOps maturity.
+
+terraform-aws-production-infra
+│
+├ main.tf
+├ variables.tf
+├ outputs.tf
+│
+├ modules
+│   ├ vpc
+│   ├ ec2
+│   └ alb
+│
+├ environments
+│   ├ dev.tfvars
+│   ├ stage.tfvars
+│   └ prod.tfvars
+│
+└ backend
+    └ s3.tf
+Why this structure is used
+Folder	Purpose
+modules	reusable infrastructure
+environments	dev/stage/prod configs
+backend	remote state config
+main.tf	main orchestration
+This separation is very common in real DevOps teams.
+
+4) Provider Configuration
+
+provider "aws" {
+  region = var.aws_region
+}
+Terraform needs a provider to communicate with AWS APIs.
+Flow:
+
+Terraform → AWS Provider → AWS API → Infrastructure
+Example API calls Terraform makes:
+
+CreateVpc
+RunInstances
+CreateLoadBalancer
+
+5) Variables (Why They Are Important)
+
+variable "aws_region" {}
+variable "environment" {}
+variable "instance_type" {}
+Variables allow reusable infrastructure.
+Without variables:
+
+Hardcoded infrastructure
+With variables:
+
+Same code → different environments
+Example environments:
+Environment	Instance Type
+dev	t3.micro
+stage	t3.small
+prod	t3.medium
+
+6) Environment Files
+Example:
+
+dev.tfvars
+stage.tfvars
+prod.tfvars
+Example file:
+
+environment = "dev"
+aws_region = "ap-south-1"
+instance_type = "t3.micro"
+Terraform loads these values during apply.
+Command:
+
+terraform apply -var-file=environments/dev.tfvars
+Result:
+
+Dev infrastructure created
+
+7) VPC Module (Networking)
+A VPC is your private cloud network.
+Example:
+
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+}
+CIDR explanation:
+
+10.0.0.0/16
+Range:
+
+10.0.0.0 → 10.0.255.255
+Total IPs:
+
+65,536
+Inside the VPC we create subnets:
+
+Public subnet
+Private subnet
+Example:
+
+10.0.1.0/24
+10.0.2.0/24
+Each subnet:
+
+256 IP addresses
+
+8) Internet Gateway
+Purpose:
+Allow internet communication.
+
+VPC → Internet Gateway → Internet
+Without IGW:
+
+Instances cannot reach internet
+
+9) NAT Gateway
+Purpose:
+Allow private instances to access internet.
+Example use case:
+
+EC2 installs updates
+Pull Docker images
+Flow:
+
+Private EC2 → NAT → Internet
+
+10) Security Groups (Firewall)
+Example rule:
+
+Allow HTTP (80)
+Allow SSH (22)
+Example:
+
+ingress {
+  from_port = 80
+  to_port = 80
+  protocol = "tcp"
+  cidr_blocks = ["0.0.0.0/0"]
+}
+Meaning:
+
+Anyone on internet can access port 80
+Security groups act like:
+
+Cloud firewall
+
+11) EC2 Instances
+Terraform creates compute servers.
+Example:
+
+resource "aws_instance" "app" {
+  ami = "ami-xxxxx"
+  instance_type = "t3.micro"
+}
+EC2 instance is where your app runs:
+
+Node.js
+Docker
+Kubernetes
+Web server
+
+12) Application Load Balancer
+Purpose:
+Distribute traffic.
+Without load balancer:
+
+Internet → Single EC2
+With load balancer:
+
+Internet → ALB → Multiple EC2
+Benefits:
+	• high availability
+	• traffic distribution
+	• fault tolerance
+
+13) Auto Scaling Group
+Auto Scaling adjusts number of instances automatically.
+Example rule:
+
+CPU > 70% → add instance
+CPU < 20% → remove instance
+This provides:
+
+Elastic scaling
+Cost optimization
+
+14) Terraform State (Very Important)
+Terraform keeps track of infrastructure in a state file.
+Example:
+
+terraform.tfstate
+State contains:
+
+resource IDs
+IP addresses
+dependencies
+Without state:
+Terraform cannot manage infrastructure.
+
+15) Remote State (S3)
+Instead of local state:
+
+local machine
+We store state in S3.
+Benefits:
+
+team collaboration
+state backup
+CI/CD compatibility
+Example backend:
+
+backend "s3" {
+  bucket = "terraform-state-project"
+  key = "infra/terraform.tfstate"
+  region = "ap-south-1"
+}
+
+16) DynamoDB Locking
+Problem:
+Two engineers run Terraform at same time.
+Result:
+
+State corruption
+Solution:
+
+DynamoDB state lock
+Flow:
+
+Terraform run
+↓
+Lock state
+↓
+Apply changes
+↓
+Unlock
+
+17) Terraform Workflow
+Real workflow:
+
+terraform init
+terraform plan
+terraform apply
+terraform destroy
+Explanation:
+init
+Download providers.
+plan
+Preview changes.
+Example:
+
++ create EC2
++ create VPC
+apply
+Create infrastructure.
+destroy
+Delete infrastructure.
+
+18) What Recruiters Look For
+If they see this project, they know you understand:
+
+Cloud networking
+Infrastructure as Code
+Terraform modules
+Scalable architecture
+Remote state management
+Multi environment deployments
+These are core DevOps skills.
+
+19) How This Looks on GitHub
+Repo:
+
+terraform-aws-production-infrastructure
+README includes:
+
+architecture diagram
+terraform commands
+screenshots
+explanation
+Pin this repo.
+
+20) Next Upgrade (Very Powerful)
+After this project, integrate:
+
+Terraform
+↓
+Docker deployment
+↓
+Kubernetes cluster
+↓
+Monitoring
+Full DevOps pipeline.
+
+
+Final Architecture
+
+Developer
+   │
+GitHub
+   │
+Terraform
+   │
+AWS Infrastructure
+   │
+Docker Containers
+   │
+Kubernetes Cluster
+   │
+Application Deployment
+   │
+Monitoring (Prometheus + Grafana)
+This single project demonstrates Infrastructure + Containers + Orchestration + Monitoring.
+
+PHASE 1 — Infrastructure with Terraform
+Goal: Automatically create AWS infrastructure.
+What Terraform will create
+	• VPC
+	• Public & Private Subnets
+	• Internet Gateway
+	• NAT Gateway
+	• Security Groups
+	• EC2 instances (Kubernetes nodes)
+	• Load Balancer
+	• Auto Scaling
+	• S3 backend for Terraform state
+	• DynamoDB locking
+Folder structure
+
+terraform-aws-infra
+│
+├ modules
+│   ├ vpc
+│   ├ ec2
+│   ├ alb
+│
+├ environments
+│   ├ dev.tfvars
+│   ├ stage.tfvars
+│   └ prod.tfvars
+│
+├ backend
+│   └ s3.tf
+│
+├ main.tf
+├ variables.tf
+└ outputs.tf
+Commands
+Initialize:
+
+terraform init
+Plan:
+
+terraform plan -var-file=environments/dev.tfvars
+Apply:
+
+terraform apply -var-file=environments/dev.tfvars
+Result: AWS infrastructure created.
+
+PHASE 2 — Install Docker on EC2
+Goal: Run containerized applications.
+On EC2 instance:
+
+sudo apt update
+sudo apt install docker.io -y
+sudo systemctl start docker
+sudo systemctl enable docker
+Check Docker:
+
+docker --version
+
+PHASE 3 — Build Docker Application
+Create a simple web application.
+Example structure:
+
+app
+│
+├ Dockerfile
+├ index.html
+└ nginx.conf
+Example Dockerfile:
+
+FROM nginx
+COPY index.html /usr/share/nginx/html
+Build image:
+
+docker build -t devops-demo .
+Run container:
+
+docker run -d -p 80:80 devops-demo
+Now your app runs inside Docker.
+
+PHASE 4 — Kubernetes Cluster Setup
+Goal: Manage containers at scale.
+Cluster nodes:
+
+1 Master node
+2 Worker nodes
+Install Kubernetes components:
+
+kubeadm
+kubelet
+kubectl
+Initialize cluster:
+
+sudo kubeadm init
+Join worker nodes:
+
+kubeadm join <token>
+Check nodes:
+
+kubectl get nodes
+
+PHASE 5 — Deploy Application to Kubernetes
+Create deployment.
+Example file:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: devops-demo
+        ports:
+        - containerPort: 80
+Apply:
+
+kubectl apply -f deployment.yaml
+Check pods:
+
+kubectl get pods
+
+PHASE 6 — Expose Application
+Create service.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: NodePort
+  selector:
+    app: web
+  ports:
+  - port: 80
+    targetPort: 80
+Apply:
+
+kubectl apply -f service.yaml
+Now application is accessible.
+
+PHASE 7 — Add Monitoring
+Install monitoring stack.
+Monitoring tools:
+	• Prometheus → collects metrics
+	• Grafana → dashboards
+Install using Helm:
+
+helm install prometheus prometheus-community/kube-prometheus-stack
+Access Grafana:
+
+http://<node-ip>:3000
+Metrics available:
+	• CPU usage
+	• Memory usage
+	• Pod status
+	• Node health
+
+PHASE 8 — GitHub Repository Structure
+Final project structure:
+
+devops-end-to-end-project
+│
+├ terraform
+│
+├ docker
+│   └ Dockerfile
+│
+├ kubernetes
+│   ├ deployment.yaml
+│   └ service.yaml
+│
+├ monitoring
+│
+└ README.md
+
+PHASE 9 — GitHub README (Important)
+README should include:
+	• architecture diagram
+	• project explanation
+	• terraform commands
+	• docker commands
+	• kubernetes commands
+	• monitoring screenshots
+Pin this repo on GitHub.
+
+Skills This Project Demonstrates
+This single project shows:
+Infrastructure as Code
+Cloud networking
+Containerization
+Container orchestration
+Monitoring & observability
+DevOps architecture design
+These are exact skills recruiters expect from Junior DevOps engineers.
+
+Optional Final Upgrade (Very Impressive)
+Add CI/CD pipeline using:
+	• GitHub
+	• Jenkins
+Pipeline flow:
+
+GitHub push
+↓
+Jenkins pipeline
+↓
+Build Docker image
+↓
+Push to registry
+↓
+Deploy to Kubernetes
+
+
+
+
+
+
+
+Complete DevOps End-to-End Project Roadmap
+Final Architecture
+
+Developer
+   │
+GitHub
+   │
+Terraform
+   │
+AWS Infrastructure
+   │
+Docker Containers
+   │
+Kubernetes Cluster
+   │
+Application Deployment
+   │
+Monitoring (Prometheus + Grafana)
+This single project demonstrates Infrastructure + Containers + Orchestration + Monitoring.
+
+PHASE 1 — Infrastructure with Terraform
+Goal: Automatically create AWS infrastructure.
+What Terraform will create
+	• VPC
+	• Public & Private Subnets
+	• Internet Gateway
+	• NAT Gateway
+	• Security Groups
+	• EC2 instances (Kubernetes nodes)
+	• Load Balancer
+	• Auto Scaling
+	• S3 backend for Terraform state
+	• DynamoDB locking
+Folder structure
+
+terraform-aws-infra
+│
+├ modules
+│   ├ vpc
+│   ├ ec2
+│   ├ alb
+│
+├ environments
+│   ├ dev.tfvars
+│   ├ stage.tfvars
+│   └ prod.tfvars
+│
+├ backend
+│   └ s3.tf
+│
+├ main.tf
+├ variables.tf
+└ outputs.tf
+Commands
+Initialize:
+
+terraform init
+Plan:
+
+terraform plan -var-file=environments/dev.tfvars
+Apply:
+
+terraform apply -var-file=environments/dev.tfvars
+Result: AWS infrastructure created.
+
+PHASE 2 — Install Docker on EC2
+Goal: Run containerized applications.
+On EC2 instance:
+
+sudo apt update
+sudo apt install docker.io -y
+sudo systemctl start docker
+sudo systemctl enable docker
+Check Docker:
+
+docker --version
+
+PHASE 3 — Build Docker Application
+Create a simple web application.
+Example structure:
+
+app
+│
+├ Dockerfile
+├ index.html
+└ nginx.conf
+Example Dockerfile:
+
+FROM nginx
+COPY index.html /usr/share/nginx/html
+Build image:
+
+docker build -t devops-demo .
+Run container:
+
+docker run -d -p 80:80 devops-demo
+Now your app runs inside Docker.
+
+PHASE 4 — Kubernetes Cluster Setup
+Goal: Manage containers at scale.
+Cluster nodes:
+
+1 Master node
+2 Worker nodes
+Install Kubernetes components:
+
+kubeadm
+kubelet
+kubectl
+Initialize cluster:
+
+sudo kubeadm init
+Join worker nodes:
+
+kubeadm join <token>
+Check nodes:
+
+kubectl get nodes
+
+PHASE 5 — Deploy Application to Kubernetes
+Create deployment.
+Example file:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: devops-demo
+        ports:
+        - containerPort: 80
+Apply:
+
+kubectl apply -f deployment.yaml
+Check pods:
+
+kubectl get pods
+
+PHASE 6 — Expose Application
+Create service.
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: NodePort
+  selector:
+    app: web
+  ports:
+  - port: 80
+    targetPort: 80
+Apply:
+
+kubectl apply -f service.yaml
+Now application is accessible.
+
+PHASE 7 — Add Monitoring
+Install monitoring stack.
+Monitoring tools:
+	• Prometheus → collects metrics
+	• Grafana → dashboards
+Install using Helm:
+
+helm install prometheus prometheus-community/kube-prometheus-stack
+Access Grafana:
+
+http://<node-ip>:3000
+Metrics available:
+	• CPU usage
+	• Memory usage
+	• Pod status
+	• Node health
+
+PHASE 8 — GitHub Repository Structure
+Final project structure:
+
+devops-end-to-end-project
+│
+├ terraform
+│
+├ docker
+│   └ Dockerfile
+│
+├ kubernetes
+│   ├ deployment.yaml
+│   └ service.yaml
+│
+├ monitoring
+│
+└ README.md
+
+PHASE 9 — GitHub README (Important)
+README should include:
+	• architecture diagram
+	• project explanation
+	• terraform commands
+	• docker commands
+	• kubernetes commands
+	• monitoring screenshots
+Pin this repo on GitHub.
+
+Skills This Project Demonstrates
+This single project shows:
+Infrastructure as Code
+Cloud networking
+Containerization
+Container orchestration
+Monitoring & observability
+DevOps architecture design
+These are exact skills recruiters expect from Junior DevOps engineers.
+
+Optional Final Upgrade (Very Impressive)
+Add CI/CD pipeline using:
+	• GitHub
+	• Jenkins
+Pipeline flow:
+
+GitHub push
+↓
+Jenkins pipeline
+↓
+Build Docker image
+↓
+Push to registry
+↓
+Deploy to Kubernetes
+
+✅ If you want, I can also give you the exact 30-step execution plan (day-by-day) so you can complete this entire project in about 7–10 days and make it interview-ready.
+yes ure
+Perfect 👍
+Here is a 10-Day Execution Plan for your End-to-End DevOps Project using:
+	• Terraform
+	• Docker
+	• Kubernetes
+	• Prometheus
+	• Grafana
+on Amazon Web Services.
+You can copy this directly into your notes and follow daily.
+
+End-to-End DevOps Project (10-Day Plan)
+Final pipeline:
+
+Terraform
+↓
+AWS Infrastructure
+↓
+Docker Application
+↓
+Kubernetes Deployment
+↓
+Monitoring
+
+DAY 1 — Project Setup
+Create project repo
+
+mkdir devops-end-to-end-project
+cd devops-end-to-end-project
+Structure:
+
+devops-end-to-end-project
+│
+├ terraform
+├ docker
+├ kubernetes
+├ monitoring
+└ README.md
+Push empty repo to GitHub.
+
+DAY 2 — Terraform Infrastructure (Networking)
+Create:
+	• VPC
+	• Subnets
+	• Internet Gateway
+	• Route Tables
+Example Terraform resources:
+
+aws_vpc
+aws_subnet
+aws_internet_gateway
+aws_route_table
+Commit to GitHub.
+
+DAY 3 — Terraform Compute Layer
+Create:
+	• EC2 instances
+	• Security groups
+	• Key pair
+Terraform resources:
+
+aws_instance
+aws_security_group
+aws_key_pair
+Now infrastructure can run servers.
+
+DAY 4 — Terraform Best Practices
+Add:
+	• Terraform modules
+	• dev / stage / prod environments
+	• variables
+Example folders:
+
+terraform
+│
+├ modules
+│   ├ vpc
+│   └ ec2
+│
+├ environments
+│   ├ dev.tfvars
+│   ├ stage.tfvars
+│   └ prod.tfvars
+This makes your project professional.
+
+DAY 5 — Remote Terraform State
+Create remote backend.
+Resources:
+
+S3 bucket
+DynamoDB table
+Purpose:
+	• state storage
+	• state locking
+Now Terraform is team-ready.
+
+DAY 6 — Docker Application
+Create a simple web app.
+Example structure:
+
+docker
+│
+├ Dockerfile
+└ index.html
+Dockerfile example:
+
+FROM nginx
+COPY index.html /usr/share/nginx/html
+Build image:
+
+docker build -t devops-demo .
+Run container:
+
+docker run -d -p 80:80 devops-demo
+Push image to Docker registry.
+
+DAY 7 — Kubernetes Cluster
+Create Kubernetes cluster on EC2.
+Install tools:
+
+kubeadm
+kubectl
+kubelet
+Cluster architecture:
+
+1 master node
+2 worker nodes
+Commands:
+
+kubeadm init
+kubeadm join
+kubectl get nodes
+Cluster ready.
+
+DAY 8 — Deploy Application on Kubernetes
+Create Kubernetes manifests.
+Files:
+
+kubernetes
+│
+├ deployment.yaml
+└ service.yaml
+Deployment example:
+
+replicas: 3
+container: docker image
+port: 80
+Apply:
+
+kubectl apply -f deployment.yaml
+Now application runs in Kubernetes.
+
+DAY 9 — Monitoring Setup
+Install monitoring stack using Helm.
+Install:
+	• Prometheus
+	• Grafana
+Command:
+
+helm install monitoring prometheus-community/kube-prometheus-stack
+Metrics monitored:
+	• CPU usage
+	• memory usage
+	• pod health
+	• node metrics
+Access Grafana dashboard.
+
+DAY 10 — Finalize GitHub Project
+Final repo structure:
+
+devops-end-to-end-project
+│
+├ terraform
+│
+├ docker
+│
+├ kubernetes
+│
+├ monitoring
+│
+└ README.md
+Add to README:
+	• project explanation
+	• architecture diagram
+	• setup steps
+	• screenshots
+Pin this repo.
+
+Final Architecture
+
+Developer
+   │
+GitHub
+   │
+Terraform
+   │
+AWS Infrastructure
+   │
+Docker Containers
+   │
+Kubernetes Cluster
+   │
+Monitoring
+
+Skills This Project Shows
+If a recruiter sees this repo, they know you understand:
+	• Cloud infrastructure
+	• Infrastructure as Code
+	• Containers
+	• Kubernetes orchestration
+	• Monitoring
+	• DevOps architecture
+This is exactly what companies expect from Junior DevOps engineers.
+
+
+
+My Recommendation (Use This)
+Create repo:
+
+devops-end-to-end-project
+Inside it:
+
+devops-end-to-end-project
+│
+├ terraform
+├ docker
+├ kubernetes
+├ monitoring
+└ README.md
+Today we work in:
+
+terraform/
+
+
+
+PHASE 1 — Complete Step-by-Step Guide
+Step 1 — Install Terraform
+Download Terraform from
+Terraform official site.
+For Windows:
+	1. Download Terraform zip
+	2. Extract it
+	3. Move terraform.exe to a folder
+	4. Add that folder to Environment Variables → PATH
+Verify installation:
+
+terraform -version
+Example output:
+
+Terraform v1.x.x
+
+Step 2 — Install AWS CLI
+Download:
+AWS CLI
+Verify:
+
+aws --version
+Step-by-Step: Install AWS CLI on Windows (Using VS Code)
+1️⃣ Download AWS CLI Installer
+	1. Open this official download link:
+https://awscli.amazonaws.com/AWSCLIV2.msi
+	2. Download the file AWSCLIV2.msi.
+
+2️⃣ Install AWS CLI
+	1. Double-click AWSCLIV2.msi
+	2. Click Next → Next → Install
+	3. Click Finish
+This installs AWS CLI and automatically adds it to Windows PATH.
+
+3️⃣ Restart VS Code
+If VS Code was already open:
+	1. Close Visual Studio Code
+	2. Open it again
+This refreshes the environment variables.
+
+4️⃣ Verify Installation in VS Code
+	1. Open VS Code
+	2. Open Terminal
+
+
+aws --version
+
+Step 3 — Create AWS Credentials
+Go to Amazon Web Services Console
+Navigate:
+
+IAM → Users → Security Credentials → Access Keys
+Create:
+
+Access Key
+Secret Key
+
+Step 4 — Configure AWS CLI
+Run:
+
+aws configure
+Enter:
+
+AWS Access Key ID
+AWS Secret Access Key
+Region → ap-south-1
+Output format → json
+Test:
+
+aws s3 ls
+If no error appears → credentials are correct.
+
+Step 5 — Create Project Folder
+Open terminal and run:
+
+mkdir terraform-phase1
+cd terraform-phase1
+Open this folder in **Visual Studio Code.
+
+Step 6 — Create Terraform Files
+Create these files:
+
+terraform-phase1
+│
+├ provider.tf
+├ main.tf
+├ variables.tf
+└ outputs.tf
+
+Step 7 — Provider Configuration
+Open provider.tf
+
+provider "aws" {
+  region = "ap-south-1"
+}
+This tells Terraform to use AWS Mumbai region.
+
+Step 8 — Create VPC
+Open main.tf
+Add:
+
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+
+  tags = {
+    Name = "devops-vpc"
+  }
+}
+This creates your private network in AWS.
+
+Step 9 — Create Subnet
+Add below VPC:
+
+resource "aws_subnet" "public_subnet" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = "ap-south-1a"
+
+  tags = {
+    Name = "public-subnet"
+  }
+}
+This subnet will contain your EC2 instances.
+
+Step 10 — Create Internet Gateway
+Add:
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "devops-igw"
+  }
+}
+Purpose: allow internet traffic.
+
+Step 11 — Create Route Table
+Add:
+
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "public-route-table"
+  }
+}
+This allows internet routing.
+
+Step 12 — Associate Route Table with Subnet
+Add:
+
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.public_rt.id
+}
+Now subnet can access internet.
+
+Step 13 — Create Security Group
+Add:
+
+resource "aws_security_group" "web_sg" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+This allows:
+
+SSH → port 22
+HTTP → port 80
+
+Step 14 — Launch EC2 Instance
+Add:
+
+resource "aws_instance" "server" {
+  ami           = "ami-0f58b397bc5c1f2e8"
+  instance_type = "t3.micro"
+
+  subnet_id = aws_subnet.public_subnet.id
+
+  vpc_security_group_ids = [
+    aws_security_group.web_sg.id
+  ]
+
+  tags = {
+    Name = "devops-server"
+  }
+}
+This creates your server automatically.
+
+
+
+
+
+
+What You Built Today
+
+AWS Infrastructure
+│
+├ VPC
+├ Subnet
+├ Internet Gateway
+├ Route Table
+├ Security Group
+└ EC2 Instance
+
+After Phase 1 (Very Important)
+Next phase we will upgrade to professional Terraform project structure:
+
+modules
+variables
+dev / stage / prod
+remote state
+
+
+
+
+
+
+
+Step 1 — Go to Terraform Folder
+Your project structure:
+
+devops-end-to-end-project
+│
+├ terraform
+├ docker
+├ kubernetes
+├ monitoring
+Go inside terraform folder.
+
+cd devops-end-to-end-project/terraform
+
+Step 2 — Create Terraform Files
+Create files:
+
+touch provider.tf
+touch variables.tf
+touch main.tf
+touch outputs.tf
+Structure:
+
+terraform
+│
+├ provider.tf
+├ variables.tf
+├ main.tf
+└ outputs.tf
+
+Step 3 — Configure Provider
+Open provider.tf
+
+provider "aws" {
+  region = "ap-south-1"
+}
+This tells Terraform to use Mumbai region.
+
+Step 4 — Create VPC
+Open main.tf
+
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
+
+  tags = {
+    Name = "devops-vpc"
+  }
+}
+Explanation:
+
+10.0.0.0/16
+Provides 65,536 IP addresses.
+
+Step 5 — Create Public Subnet
+Add below VPC.
+
+resource "aws_subnet" "public_subnet" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "ap-south-1a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "public-subnet"
+  }
+}
+Public subnet allows internet access.
+
+Step 6 — Create Private Subnet
+
+resource "aws_subnet" "private_subnet" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = "ap-south-1a"
+
+  tags = {
+    Name = "private-subnet"
+  }
+}
+Private subnet is not directly accessible from internet.
+
+Step 7 — Create Internet Gateway
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "devops-igw"
+  }
+}
+Purpose:
+Allow VPC to connect to internet.
+
+Step 8 — Create Elastic IP (for NAT)
+
+resource "aws_eip" "nat_eip" {
+  domain = "vpc"
+}
+Needed for NAT gateway.
+
+Step 9 — Create NAT Gateway
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public_subnet.id
+
+  tags = {
+    Name = "devops-nat"
+  }
+}
+Purpose:
+Allow private subnet instances to access internet.
+Example:
+
+software updates
+docker images
+package downloads
+
+Step 10 — Public Route Table
+
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "public-route-table"
+  }
+}
+Route:
+
+0.0.0.0/0 → Internet Gateway
+
+Step 11 — Private Route Table
+
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "private-route-table"
+  }
+}
+Route:
+
+0.0.0.0/0 → NAT Gateway
+
+Step 12 — Associate Public Route Table
+
+resource "aws_route_table_association" "public_assoc" {
+  subnet_id      = aws_subnet.public_subnet.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+Step 13 — Associate Private Route Table
+
+resource "aws_route_table_association" "private_assoc" {
+  subnet_id      = aws_subnet.private_subnet.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+Step 14 — Initialize Terraform
+Run:
+
+terraform init
+This downloads the AWS provider.
+
+Step 15 — Check Execution Plan
+
+terraform plan
+You should see resources like:
+
++ aws_vpc
++ aws_subnet
++ aws_nat_gateway
++ aws_internet_gateway
++ aws_route_table
+
+Step 16 — Apply Infrastructure
+
+terraform apply
+Type:
+
+yes
+Terraform will create infrastructure in AWS.
+
+Step 17 — Verify in AWS
+Open **Amazon Web Services Console.
+Check:
+
+VPC
+Subnets
+Route Tables
+NAT Gateway
+Internet Gateway
+All resources should appear.
+
+Final Architecture Created
+
+VPC (10.0.0.0/16)
+│
+├ Public Subnet (10.0.1.0/24)
+│   ├ Internet Gateway
+│   └ NAT Gateway
+│
+└ Private Subnet (10.0.2.0/24)
+    └ Private Route Table
+
+What Phase 1 Achieves
+You learned:
+	• Terraform infrastructure creation
+	• AWS VPC networking
+	• public vs private subnet
+	• internet gateway
+	• NAT gateway
+	• route tables
+These are core DevOps networking skills.
+
+Terraform
+   │
+   ▼
+AWS Infrastructure
+(VPC, Subnets, EC2)
+   │
+   ▼
+Docker Containers
+   │
+   ▼
+Kubernetes Cluster
+   │
+   ▼
+CI/CD Pipeline
+   │
+   ▼
+Monitoring
+(Prometheus + Grafana)
+
+Complete DevOps End-to-End Project Phases
+Phase 1 — Terraform Infrastructure (Completed ✅)
+Goal: Create AWS networking infrastructure
+You created:
+
+VPC
+Public Subnet
+Private Subnet
+Internet Gateway
+NAT Gateway
+Route Tables
+Route Table Associations
+Architecture:
+
+Internet
+   │
+Internet Gateway
+   │
+Public Subnet
+   │
+NAT Gateway
+   │
+Private Subnet
+This is the foundation layer.
+
+Phase 2 — Professional Terraform Structure (Current Phase)
+Goal: Make Terraform production-ready
+We add:
+	• variables
+	• terraform.tfvars
+	• outputs
+	• reusable configuration
+Folder structure:
+
+terraform
+ ├ provider.tf
+ ├ main.tf
+ ├ variables.tf
+ ├ terraform.tfvars
+ └ outputs.tf
+This improves:
+	• reusability
+	• configurability
+	• maintainability
+
+Phase 3 — Terraform Modules + Environments
+Goal: Write real production Terraform structure
+We create:
+
+terraform
+│
+├ modules
+│   └ vpc
+│
+├ environments
+│   ├ dev
+│   ├ stage
+│   └ prod
+You will learn:
+	• Terraform modules
+	• dev/stage/prod environments
+	• reusable infrastructure
+This is very important for DevOps interviews.
+
+Phase 4 — Remote Terraform State
+Goal: Store Terraform state remotely.
+We will create:
+	• S3 bucket for state
+	• DynamoDB table for state locking
+Using:
+
+S3 → terraform state
+DynamoDB → state locking
+This prevents:
+	• state corruption
+	• multiple engineers overwriting state
+Used in every company using Terraform.
+
+Phase 5 — Application Containerization
+Goal: Package application using containers.
+Using Docker.
+You will create:
+
+Dockerfile
+docker build
+docker run
+docker-compose
+Example architecture:
+
+React App
+Node Backend
+Database
+
+Phase 6 — Kubernetes Deployment
+Goal: Run containers in cluster using Kubernetes.
+You will create:
+
+Deployment
+Service
+ConfigMap
+Secret
+Ingress
+Cluster options:
+	• EC2 Kubernetes cluster
+	• Managed cluster (EKS)
+
+Phase 7 — CI/CD Pipeline
+Goal: Automate builds and deployments.
+Tools:
+	• GitHub Actions or Jenkins
+Pipeline:
+
+Code Push
+   ↓
+Build Docker Image
+   ↓
+Push to Docker Registry
+   ↓
+Deploy to Kubernetes
+
+Phase 8 — Monitoring & Observability
+Goal: Monitor infrastructure and applications.
+Using:
+	• Prometheus
+	• Grafana
+Metrics collected:
+
+CPU
+Memory
+Pod health
+Network traffic
+Dashboard example:
+
+Grafana Dashboard
+ ├ Cluster CPU
+ ├ Pod memory
+ ├ Node health
+
+Final Architecture
+Your full system will look like:
+
+Terraform
+   │
+   ▼
+AWS Infrastructure
+(VPC, Subnets, EC2)
+   │
+   ▼
+Docker Containers
+   │
+   ▼
+Kubernetes Cluster
+   │
+   ▼
+CI/CD Pipeline
+   │
+   ▼
+Monitoring
+(Prometheus + Grafana)
+
+Why This Project Is Powerful for Jobs
+This single project shows skills in:
+	• Infrastructure as Code
+	• Cloud networking
+	• Containerization
+	• Kubernetes
+	• CI/CD
+	• Monitoring
+Exactly what companies expect from Junior DevOps engineers.
+
+
+
+🚀 In Your Terraform Phase-1 Project
+You will create:
+1️⃣ VPC
+2️⃣ Public Subnet
+3️⃣ Private Subnet
+4️⃣ Internet Gateway
+5️⃣ Route Table
+6️⃣ EC2 instance
+All using **Terraform.
+
+If you want, I can also show you the exact Terraform resource order (very important) so you don’t get dependency errors like:
+
+Error: resource not ready
+This step is where most beginners fail in Terraform.
+explain all these networking deep and compelte
+I’ll explain this step-by-step and deeply, because understanding AWS networking is one of the most important skills for a DevOps engineer.
+All of this happens inside Amazon Virtual Private Cloud in Amazon Web Services.
+
+1️⃣ What is a VPC (Virtual Private Cloud)
+A VPC is your private network inside AWS.
+Think of it like a data center network you own, but hosted in AWS.
+Example:
+
+Company Office Network
+│
+├── Server Room
+├── Office PCs
+└── Internal Database
+In AWS it becomes:
+
+VPC
+│
+├── Subnets
+├── EC2 Servers
+├── Databases
+└── Load Balancers
+So a VPC = isolated network where your cloud resources run.
+
+2️⃣ CIDR Block (IP Address Range)
+When creating a VPC you must define IP address range using CIDR.
+Example:
+
+10.0.0.0/16
+Meaning:
+
+Network: 10.0.0.0
+Subnet mask: /16
+Total IPs: 65,536
+Explanation:
+
+/16 = first 16 bits fixed
+Remaining bits = host addresses
+Calculation:
+
+2^(32-16) = 65,536 IPs
+Example IPs inside VPC:
+
+10.0.0.1
+10.0.0.2
+10.0.1.5
+10.0.10.8
+These are private IPs.
+
+3️⃣ Subnets
+A subnet divides the VPC into smaller networks.
+Example VPC:
+
+10.0.0.0/16
+We divide it into:
+
+Public Subnet   → 10.0.1.0/24
+Private Subnet  → 10.0.2.0/24
+Meaning each subnet has:
+
+256 IP addresses
+Because:
+
+/24 = 2^(32-24)
+     = 256
+AWS reserves 5 IPs:
+
+.0  network address
+.1  router
+.2  DNS
+.3  future use
+.255 broadcast
+So usable:
+
+256 - 5 = 251
+
+4️⃣ Public Subnet
+A public subnet can communicate with the internet.
+Requirements:
+1️⃣ Route table has route to Internet Gateway
+2️⃣ EC2 has public IP
+Example:
+
+10.0.1.0/24
+Resources typically placed here:
+
+Load Balancer
+Bastion Host
+NAT Gateway
+Public Web Server
+Traffic flow:
+
+User Browser
+     ↓
+Internet
+     ↓
+Internet Gateway
+     ↓
+Public Subnet
+     ↓
+EC2 Server
+
+5️⃣ Private Subnet
+A private subnet cannot directly access the internet.
+Example:
+
+10.0.2.0/24
+Used for:
+
+Application servers
+Databases
+Microservices
+Internal APIs
+Traffic flow:
+
+Internet
+   ↓
+Load Balancer
+   ↓
+Public Subnet
+   ↓
+Application Server
+   ↓
+Database (Private Subnet)
+This improves security.
+
+6️⃣ Internet Gateway
+An Internet Gateway connects a VPC to the internet.
+Without it:
+
+VPC cannot communicate with Internet
+Architecture:
+
+Internet
+   │
+Internet Gateway
+   │
+VPC
+Important points:
+• One IGW per VPC
+• Highly available
+• Managed by AWS
+
+7️⃣ Route Table
+A route table controls where network traffic goes.
+Example route table:
+
+Destination      Target
+--------------------------------
+10.0.0.0/16      Local
+0.0.0.0/0        Internet Gateway
+Explanation:
+
+10.0.0.0/16 → internal VPC traffic
+0.0.0.0/0   → internet traffic
+Meaning:
+
+All internet traffic goes through Internet Gateway
+
+8️⃣ NAT Gateway (Important for Private Subnets)
+Private servers sometimes need internet for:
+
+Software updates
+Docker images
+API calls
+But they should not be publicly accessible.
+Solution:
+NAT Gateway
+Architecture:
+
+Private EC2
+     │
+Private Subnet
+     │
+Route Table → NAT Gateway
+     │
+Public Subnet
+     │
+Internet Gateway
+     │
+Internet
+Meaning:
+
+Private server can access internet
+But internet cannot access it
+
+9️⃣ Security Groups
+A security group acts like a firewall.
+Example:
+
+Inbound Rules
+--------------------------------
+Port 22   → SSH
+Port 80   → HTTP
+Port 443  → HTTPS
+Example configuration:
+
+Source      Port
+0.0.0.0/0   80
+0.0.0.0/0   443
+MyIP        22
+Security groups are stateful.
+Meaning:
+
+If request allowed
+Response automatically allowed
+
+🔟 Network ACL (NACL)
+Another firewall at subnet level.
+Difference:
+Feature	Security Group	NACL
+Level	Instance	Subnet
+Stateful	Yes	No
+Allow/Deny	Allow only	Allow & Deny
+
+1️⃣1️⃣ Complete AWS Architecture
+Real architecture looks like this:
+
+                 Internet
+                     │
+             Internet Gateway
+                     │
+                Public Subnet
+                     │
+              Load Balancer
+                     │
+                Route Table
+                     │
+                    VPC
+                     │
+             Private Subnet
+              App Servers
+                     │
+             Private Subnet
+               Database
+
+1️⃣2️⃣ Real Production Architecture (Multi AZ)
+Professional companies use multiple availability zones.
+
+                Internet
+                    │
+             Internet Gateway
+                    │
+        ┌────────────┴────────────┐
+        │                         │
+   Public Subnet AZ1        Public Subnet AZ2
+        │                         │
+      Load Balancer (ALB)
+        │                         │
+   Private Subnet AZ1        Private Subnet AZ2
+        │                         │
+      App Server              App Server
+        │                         │
+     Database Replica       Database Primary
+Benefits:
+
+High availability
+Fault tolerance
+Auto scaling
+
+1️⃣3️⃣ Networking Flow Example
+When a user visits your website:
+
+User Browser
+     ↓
+Internet
+     ↓
+Internet Gateway
+     ↓
+Public Subnet
+     ↓
+Load Balancer
+     ↓
+Private Subnet
+     ↓
+Application Server
+     ↓
+Database
+
+1️⃣4️⃣ Why DevOps Engineers Must Know This
+Because tools like:
+	• Terraform
+	• Kubernetes
+	• Docker
+all run on this network architecture.
+Example:
+
+Terraform → creates VPC
+Docker → runs containers
+Kubernetes → runs pods
+EC2 → hosts infrastructure
+
+🚀 For Your Terraform Phase-1 Project
+You will create these resources:
+
+VPC
+Public Subnet
+Private Subnet
+Internet Gateway
+Route Table
+NAT Gateway
+EC2 Instance
+Security Group
+
+
+This phase will make your project look like real company infrastructure code.
+
+Phase 2 Goal
+Convert your Phase 1 Terraform code into a professional structure with:
+	• variables
+	• terraform.tfvars
+	• reusable code
+	• environment support
+
+What We Will Improve
+Right now your code has hardcoded values like:
+
+cidr_block = "10.0.0.0/16"
+availability_zone = "ap-south-1a"
+This is not good for real projects.
+Instead we will use variables.
+Example:
+
+cidr_block = var.vpc_cidr
+
+Phase 2 Folder Structure
+Inside your project:
+
+devops-end-to-end-project
+│
+├ terraform
+│   ├ main.tf
+│   ├ provider.tf
+│   ├ variables.tf
+│   ├ terraform.tfvars
+│   └ outputs.tf
+│
+├ docker
+├ kubernetes
+└ monitoring
+
+Step 1 — Create variables.tf
+Inside terraform folder
+
+touch variables.tf
+Add:
+
+variable "region" {
+  description = "AWS region"
+  default     = "ap-south-1"
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR block"
+}
+
+variable "public_subnet_cidr" {
+  description = "Public subnet CIDR"
+}
+
+variable "private_subnet_cidr" {
+  description = "Private subnet CIDR"
+}
+
+variable "availability_zone" {
+  description = "Availability zone"
+}
+
+Step 2 — Update provider.tf
+Change provider:
+
+provider "aws" {
+  region = var.region
+}
+Now region is dynamic.
+
+Step 3 — Update main.tf
+Replace hardcoded values.
+VPC
+
+resource "aws_vpc" "main" {
+  cidr_block = var.vpc_cidr
+
+  tags = {
+    Name = "devops-vpc"
+  }
+}
+
+Public Subnet
+
+resource "aws_subnet" "public_subnet" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.public_subnet_cidr
+  availability_zone       = var.availability_zone
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "public-subnet"
+  }
+}
+
+Private Subnet
+
+resource "aws_subnet" "private_subnet" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = var.private_subnet_cidr
+  availability_zone = var.availability_zone
+
+  tags = {
+    Name = "private-subnet"
+  }
+}
+Everything else in your main.tf remains same.
+
+Step 4 — Create terraform.tfvars
+This file stores actual values.
+Create file:
+
+touch terraform.tfvars
+Add:
+
+region              = "ap-south-1"
+vpc_cidr            = "10.0.0.0/16"
+public_subnet_cidr  = "10.0.1.0/24"
+private_subnet_cidr = "10.0.2.0/24"
+availability_zone   = "ap-south-1a"
+
+Step 5 — (Optional but Professional) Create outputs.tf
+
+touch outputs.tf
+Add:
+
+output "vpc_id" {
+  value = aws_vpc.main.id
+}
+
+output "public_subnet_id" {
+  value = aws_subnet.public_subnet.id
+}
+
+output "private_subnet_id" {
+  value = aws_subnet.private_subnet.id
+}
+Outputs help other Terraform modules use these resources.
+
+Step 6 — Run Terraform
+Run:
+
+terraform init
+Then:
+
+terraform plan
+Then:
+
+terraform apply
+
+What Phase 2 Achieved
+Your Terraform project now supports:
+✔ configurable infrastructure
+✔ reusable code
+✔ easier environment management
+This is how DevOps teams write Terraform.
+
+
