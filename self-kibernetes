@@ -1,0 +1,1184 @@
+🟦 Kubernetes Notes (Short + Clear + Complete)
+⭐ What is Kubernetes?
+Kubernetes (K8s) is an open-source container orchestration platform used to:
+	• Deploy applications
+	• Scale applications
+	• Load balance traffic
+	• Restart failed containers
+	• Rollout & rollback new versions
+	• Manage cluster resources
+It automates deployment, scaling, and management of containerized applications.
+
+🧱 Why Kubernetes? (Benefits)
+	• Self-healing (restarts crashed containers)
+	• Auto-scaling
+	• Rolling updates
+	• Load balancing
+	• Automatic service discovery
+	• Multi-node clustering
+	• Multi-cloud support (AWS, Azure, GCP)
+	• Infrastructure-as-code YAML
+
+🧩 Kubernetes Architecture
+1️⃣ Master Node / Control Plane
+Manages the cluster.
+Components:
+	• API Server → Entry point for all K8s commands
+	• Scheduler → Places Pods on best nodes
+	• Controller Manager → Ensures desired state (replicas, endpoints)
+	• ETCD → Key-value store for cluster state
+
+2️⃣ Worker Node
+Runs the actual applications.
+Components:
+	• Kubelet → Agent that talks to master
+	• Container Runtime → Docker / containerd
+	• Kube-Proxy → Networking & load balancing
+
+📦 Key Kubernetes Objects
+1️⃣ Pod
+	• Smallest deployable unit
+	• Contains one or more containers
+	• Runs the application
+2️⃣ ReplicaSet
+	• Ensures fixed number of Pod replicas running
+3️⃣ Deployment
+	• Manages ReplicaSets
+	• Supports rolling updates and rollbacks
+	• Most common object
+4️⃣ Service
+Exposes Pods to network.
+Types:
+	• ClusterIP (default)
+	• NodePort
+	• LoadBalancer
+	• ExternalName
+5️⃣ ConfigMap
+Stores non-sensitive configuration.
+6️⃣ Secret
+Stores sensitive data (Base64 encoded).
+7️⃣ Ingress
+Layer-7 load balancer.
+Used for domain routing (example.com → app).
+8️⃣ PersistentVolume (PV)
+Actual storage in the cluster.
+9️⃣ PersistentVolumeClaim (PVC)
+Request for storage by a Pod.
+
+🔧 Core Kubernetes Features
+✔ Self Healing
+Restart failed pods automatically.
+✔ Scaling
+Scale up/down:
+
+kubectl scale deployment web --replicas=5
+✔ Zero-downtime Deployments
+Rolling updates + rollback.
+✔ Configurations as YAML
+Everything written as YAML.
+✔ Automated Scheduling
+K8s picks the best node for each Pod.
+
+📜 Important Commands (Easy Revision)
+
+kubectl get pods
+kubectl get nodes
+kubectl get deployments
+kubectl get svc
+kubectl describe pod mypod
+kubectl logs mypod
+kubectl apply -f file.yaml
+kubectl delete -f file.yaml
+
+🔄 Deployment Example YAML
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+
+⚔️ Kubernetes vs Docker Swarm (Short)
+Feature	Kubernetes	Docker Swarm
+Complexity	High	Low
+Installation	Hard	Easy
+Features	Rich & powerful	Simple
+Production Use	Industry standard	Limited
+Scalability	Very high	Moderate
+
+🧠 One-line Interview Answer
+“Kubernetes is a powerful container orchestration platform that automates deployment, scaling, networking, and management of containerized applications across clusters.”
+
+
+Container Orchestration-->
+A container  orchestration technology that manages  and deploys  thousands of  container in cluster.
+
+
+
+
+Node -  A node is a machine , physical or virtual  on which kubernetes is installed . A node is a worker machine  and that is  where  containers will be launched by kubernetes.
+It was also known as minions in the past. 
+
+Cluster -  A cluster is  a set of nodes  grouped together . This way , even if one node fails , you have your application still accesible from the other nodes.  Moreover , having multiple nodes helps in sharing loads as well .
+
+Master -  The Master  is another node with kubernetes installed in it and is configured as a master. the master watches over the nodes in the cluster and is responsible for the actual orchastration of containers on the worker nodes. When you install  kubernetes  on a system you are actually installing the following components , an API server and etcd  service , a kubelet service ,  a container runtime , controllers and scedulers. 
+The API  server acts  as the front end for kubernetes.
+
+
+
+Components -->
+
+Api Server -> The API server acts as a frontend for kubernetes. The user management devices , command line interfaces , all talk to the API server to interact with kubernetes cluster .
+
+etcd -> etcd is a distributed reliable key-value store used by kubernetes to store all data used to manage the cluster. When you have multple node and multiple masters in your cluster , etcd stores all that information on all the nodes in the cluster in a distributed manner .  etcd is responsible for implementing locks within the cluster to ensure that there are no conflicts between the masters.
+
+Scheduler ->  The Scheculer is responsible for distributing work or containers across multiple nodes. It looks for newly created containers and assigns them to nodes. 
+
+Controller -> The controller are the brain orchestration. They are responsible for noticing and responding when  nodes , containers or endpoints go down. The  controller make decisions to bring up new containers in such cases . 
+
+Container Runtime -> The container runtime is the underlying software that is used to run containers.
+
+kubelet -> kubelet is the agent that runs  on each node in the cluster. The agent is responsible for making sure that the  containers are running on the nodes as expected  
+
+
+
+
+-->
+Master node --> kube-apiserver
+
+Worker node -->kubelet 
+
+
+
+
+
+🟦 Kubernetes Architecture (Easy + Complete)
+Kubernetes has two main parts:
+1️⃣ Control Plane (Master Node) → Brain of the cluster
+2️⃣ Worker Nodes → Run your applications
+Think of it like:
+	• Master = Manager
+	• Workers = Employees doing the actual work
+
+🧠 1. Control Plane (Master Node)
+This is the brain of Kubernetes.
+It takes decisions like:
+	• Where to run Pods
+	• Restart failed Pods
+	• Maintain desired replicas
+	• Handle cluster state
+Control Plane has 5 main components:
+
+1️⃣ API Server
+📌 “Front door of Kubernetes”
+	• All kubectl commands go to the API server
+	• Other components talk to API Server
+	• Validates & saves cluster objects (pods, deployments, etc.)
+
+2️⃣ ETCD
+📌 “Database of the cluster”
+	• A distributed key-value store
+	• Stores entire cluster state
+(pods, nodes, configs, secrets, deployments)
+If ETCD is lost → cluster information is lost.
+
+3️⃣ Scheduler
+📌 “Decides where to run Pods”
+	• Looks at all available nodes
+	• Chooses the best worker node
+Based on:
+	• CPU / RAM availability
+	• Node taints/tolerations
+	• Pod resource requests & limits
+
+4️⃣ Controller Manager
+📌 “Ensures desired state”
+Example:
+If you want 3 pods and 1 pod crashes →
+Controller Manager will recreate it.
+Contains many controllers:
+	• Node Controller
+	• Deployment Controller
+	• ReplicaSet Controller
+	• Job Controller
+
+5️⃣ Cloud Controller Manager
+📌 Connects Kubernetes with cloud providers (AWS, GCP, Azure)
+Used for:
+	• Load balancers
+	• Volumes (EBS, etc.)
+	• Cloud networking
+
+🖥️ 2. Worker Nodes
+Worker nodes actually run your applications.
+Each worker node has 3 components:
+
+1️⃣ Kubelet
+📌 “Kubernetes agent running on each worker node”
+Responsibilities:
+	• Watches for new tasks from Control Plane
+	• Starts containers using container runtime
+	• Reports node and pod health
+
+2️⃣ Container Runtime
+📌 The software that actually runs containers.
+Examples:
+	• containerd (default)
+	• Docker
+	• CRI-O
+Kubernetes does not run containers, runtime does.
+
+3️⃣ Kube-Proxy
+📌 “Network traffic router”
+	• Handles networking rules
+	• Enables service discovery
+	• Load balances traffic between Pods
+
+🧱 How Kubernetes Works (Step-by-step)
+1️⃣ You run:
+
+kubectl apply -f deployment.yaml
+2️⃣ API Server receives the request
+and stores it in ETCD.
+ETCD = kubernetes Database
+
+3️⃣ Scheduler picks a worker node
+for each Pod.
+4️⃣ Kubelet instructs container runtime
+to create the containers.
+5️⃣ Kube-Proxy handles networking
+for services, load balancing traffic.
+
+🧩 Full Kubernetes Architecture (Simple Diagram)
+
+             CONTROL PLANE
+       --------------------------------
+       |   API Server                |
+       |   ETCD (database)           |
+       |   Scheduler                 |
+       |   Controller Manager        |
+       |   Cloud Controller Manager  |
+       --------------------------------
+| communicates via API
+WORKER NODES
+   ----------------------------------------
+   |  Kubelet | Kube-Proxy | Container Runtime |
+   |  Pods    | Services   |                  |
+   ----------------------------------------
+
+⭐ Simple Interview Definition
+“Kubernetes architecture consists of a Control Plane that manages the cluster state and Worker Nodes that run the actual applications. The API Server, Scheduler, Controller Manager, and ETCD form the Control Plane. Kubelet, Kube-Proxy, and the Container Runtime run on Worker Nodes."
+
+🎤 Super Short Version (For Interviews)
+Control Plane
+	• API Server → Entry point
+	• ETCD → Database
+	• Scheduler → Decides where pods run
+	• Controller Manager → Maintains desired state
+	• Cloud Controller → Cloud integration
+Worker Node
+	• Kubelet → Talks to master
+	• Kube-Proxy → Networking
+	• Container Runtime → Runs containers
+ 
+
+
+
+
+
+
+
+
+
+🐳 Docker vs containerd (Easy Explanation)
+⭐ First, understand the relationship:
+👉 Docker uses containerd internally.
+containerd is a core container runtime, while Docker is a complete container platform.
+
+🧱 1. What is Docker?
+Docker is a full container platform that includes:
+	• Docker CLI (docker)
+	• Docker daemon (dockerd)
+	• containerd (as runtime)
+	• Build system
+	• Networking
+	• Volumes
+	• Registry integration
+⭐ Docker = Full toolset to build, run & manage containers.
+
+🧱 2. What is containerd?
+containerd is a lightweight container runtime.
+It is responsible only for:
+	• Running containers
+	• Pulling images
+	• Managing container lifecycle
+It does not include:
+	• CLI
+	• Build system
+	• Swarm
+	• Networking configuration (only basic)
+⭐ containerd = The engine that actually runs containers.
+
+🧩 3. Why Kubernetes prefers containerd?
+	• Lighter
+	• Faster
+	• No Docker daemon needed
+	• Kubernetes directly talks to containerd
+	• Less overhead
+	• Follows CRI (Container Runtime Interface) standard
+Since 2022, Kubernetes removed Docker support—but it still supports containerd (Docker’s runtime).
+
+⚔️ Docker vs containerd (Table)
+Feature	Docker	containerd
+Type	Full container platform	Container runtime
+Used in Kubernetes?	❌ Deprecated	✔ Yes
+Includes CLI?	✔ Yes (docker)	❌ No
+Includes daemon?	✔ Yes (dockerd)	✔ Yes (containerd)
+Can build images?	✔ Yes	❌ No
+Swarm support?	✔ Yes	❌ No
+Registry integration	✔ Built-in	✔ Basic
+Complexity	High	Low
+Performance	Slightly slower	Faster & lightweight
+
+🧠 4. How they work together
+When you run:
+
+docker run nginx
+Flow is:
+
+docker CLI → dockerd → containerd → runc → container
+
+containerd uses runc to actually create container processes.
+
+🎤 Interview-ready 20-second answer
+“Docker is a complete container platform that includes CLI, daemon, image builds, networking, volumes, and orchestration. containerd is the lightweight container runtime that Docker uses internally to run containers. Kubernetes now prefers containerd because it is simpler, faster, and directly integrates with the CRI without requiring the Docker daemon.”
+
+🧁 Super short answer
+	• Docker = Full container tool
+	• containerd = Engine that runs containers
+
+
+
+
+
+
+🟦 containerd, ctr, and nerdctl Explained
+containerd is the container runtime used by Kubernetes and Docker.
+It has its own command-line tools:
+	• ctr → low-level CLI
+	• nerdctl → Docker-like CLI
+
+🟩 1️⃣️⃣ What is ctr?
+ctr = containerd’s low-level command-line tool
+✔ Used mainly for debugging
+✔ Not recommended for daily container operations
+✔ Very basic, not user-friendly
+✔ Doesn't support Docker-style commands
+Example:
+
+ctr images pull docker.io/library/nginx:latest
+ctr run docker.io/library/nginx:latest mynginx
+🧠 Think of:
+ctr = raw, low-level tool for containerd developers
+
+🟦 2️⃣️⃣ What is nerdctl?
+nerdctl = user-friendly CLI for containerd
+It tries to behave like Docker CLI.
+⭐ Docker-like commands:
+
+nerdctl run
+nerdctl build
+nerdctl ps
+nerdctl logs
+nerdctl exec
+Supports:
+	• Docker Compose
+	• BuildKit
+	• Volumes
+	• Networks
+	• Namespaces
+🧠 Think of:
+nerdctl = Docker CLI but for containerd
+
+🟧 3️⃣️⃣ Why we need nerdctl when ctr exists?
+Feature	ctr	nerdctl
+User-friendly	❌ No	✔ Yes
+Docker-like	❌ No	✔ Yes
+Suitable for production	❌ Mostly no	✔ Yes
+Supports build	Limited	✔ Yes (buildkit)
+Compose	❌ No	✔ Yes
+CRI compatible	Basic	Improved
+So nerdctl is practical, ctr is technical.
+
+🧠 4️⃣️⃣ Simple Analogy
+Tool	Purpose
+containerd	Engine
+ctr	Engine testing tool
+nerdctl	Steering wheel (user-friendly control)
+
+🗣️ 5️⃣️⃣ Interview Answer (Perfect)
+“ctr is containerd’s low-level debugging CLI, mainly for developers and troubleshooting. It’s not meant for everyday use. nerdctl is a Docker-compatible CLI for containerd, offering commands similar to Docker, including run, build, ps, logs, exec, and even Docker Compose. Kubernetes prefers containerd, so nerdctl makes it easy to manage containers without Docker.”
+
+🧁 Super Short Answer
+	• ctr → low-level, not user-friendly
+	• nerdctl → Docker-like CLI for containerd
+
+
+
+🟦 What is crictl?
+crictl = Command-line tool for Kubernetes container runtimes.
+It is provided by CRI (Container Runtime Interface).
+Used to debug containers, pods, and images running inside Kubernetes clusters.
+👉 Works with containerd, CRI-O, and Docker (via shim).
+
+🧠 Why do we need crictl?
+Kubernetes doesn’t use Docker directly anymore.
+Kubernetes talks to the runtime using CRI.
+crictl helps you:
+	• Inspect Pods running on a worker node
+	• See container logs
+	• List images on a node
+	• Debug CRI issues
+	• Restart containers manually if needed
+It works directly with the container runtime, not with Docker CLI.
+
+✔️ Common crictl Commands
+1️⃣ List pods
+
+crictl pods
+2️⃣ List containers
+
+crictl ps
+3️⃣ Show images on the node
+
+crictl images
+4️⃣ View container logs
+
+crictl logs <container-id>
+5️⃣ Inspect a container
+
+crictl inspect <container-id>
+6️⃣ Pull an image
+
+crictl pull nginx:latest
+7️⃣ Stop / Remove container
+
+crictl stop <id>
+crictl rm <id>
+
+🧩 Where is crictl used?
+	• Kubernetes troubleshooting
+	• When Docker is not installed
+	• When using containerd (most common now)
+	• When using CRI-O (OpenShift clusters)
+	• Debugging Kubelet issues
+	• Checking Pod status at the node level
+
+🧠 Difference between crictl vs ctr vs nerdctl
+Tool	Purpose
+ctr	Low-level containerd debugging tool
+nerdctl	Docker-like CLI for containerd
+crictl	Kubernetes runtime debugging tool
+Simple:
+	• crictl = Kubernetes-level runtime tool
+	• nerdctl = Docker-like containerd tool
+	• ctr = raw low-level tool for containerd
+
+🎤 Perfect Interview Answer
+“crictl is the Kubernetes Container Runtime Interface CLI used to debug and interact with container runtimes like containerd or CRI-O. Since Kubernetes no longer uses Docker directly, crictl is used to list pods, containers, images, logs, and troubleshoot issues at the node runtime level.”
+
+🧁 Super Short Answer
+crictl = CLI to debug containers used by Kubernetes container runtime.
+
+
+
+
+Below are the remaining important topics that connect Docker, containerd, CRI, nerdctl, crictl, and runtimes all together.
+
+🔥 1. CRI (Container Runtime Interface)
+What is CRI?
+CRI = Container Runtime Interface
+A standard API that Kubelet uses to talk to container runtimes.
+Why CRI exists?
+Earlier Kubernetes supported only Docker.
+But every cluster shouldn't depend on Docker, so CRI was introduced.
+Kubelet talks to:
+Kubelet →	Talks to
+Docker	Using dockershim (deprecated)
+Containerd	Using CRI plugin
+CRI-O	Using CRI plugin
+
+🔥 2. DockerShim (DEPRECATED)
+Before Kubernetes v1.24
+Kubelet used Docker indirectly using a component called dockershim.
+But now:
+✔ dockershim removed
+✔ Docker directly NOT supported
+✔ containerd/CRI-O is the default runtime
+
+🔥 3. containerd vs CRI-O
+Feature	containerd	CRI-O
+Who created?	Docker	RedHat
+Kubernetes support	Excellent	Excellent
+Supports docker images	Yes	Yes
+Lightweight	Very	Very
+Industry usage	High	Medium
+Both are native CRI-compatible runtimes.
+
+🔥 4. low-level Runtime (runc)
+containerd and Docker both use runc to actually create containers.
+Layers:
+
+Docker / nerdctl / kubelet
+        ↓
+  containerd (CRI plugin)
+        ↓
+       runc
+        ↓
+   actual container
+
+
+🔥 5. crictl (Kubernetes debugging tool)
+crictl = CLI to talk directly to container runtime (containerd, CRI-O)
+Used when Docker CLI no longer works with Kubernetes.
+Most useful commands:
+
+crictl ps
+crictl images
+crictl inspect <container>
+crictl logs <id>
+crictl pull nginx
+crictl runp
+Used mainly by K8s admins for node-level debugging.
+
+🔥 6. nerdctl (Docker replacement for containerd)
+nerdctl gives you Docker-like commands but works directly with containerd.
+Examples:
+
+nerdctl run -d -p 8080:80 nginx
+nerdctl images
+nerdctl ps
+nerdctl build .
+nerdctl volume ls
+Why nerdctl?
+✔ When Docker is NOT installed
+✔ When only containerd is available
+✔ Kubernetes nodes often use nerdctl
+
+🔥 7. Docker vs nerdctl vs crictl
+Feature	Docker	nerdctl	crictl
+For developers	Yes	Yes	No
+For Kubernetes	No	Yes	Yes
+Build images	Yes	Yes	No
+Pull images	Yes	Yes	Yes
+View logs	Yes	Yes	Yes
+CLI type	High-level	High-level	Low-level
+Works with containerd	Indirect	Direct	Direct
+
+🔥 8. Image formats (OCI images)
+OCI = Open Container Initiative
+Defines standards for:
+✔ Image format
+✔ Runtime (runc)
+✔ Registries
+Docker images follow OCI standards → containerd can run them natively.
+
+🔥 9. Difference Between Docker Engine and Containerd
+Feature	Docker Engine	containerd
+Full platform	Yes	No
+Build images	Yes (docker build)	No (requires buildkit/nerdctl)
+CLI	docker	none (need nerdctl)
+Used by Kubernetes?	❌ No	✔ Yes
+Heavy	Yes	No
+Uses containerd internally?	✔ Yes	containerd itself
+Docker = containerd + additional features
+containerd = minimal, lightweight runtime
+
+🔥 10. BuildKit
+Modern image builder used by Docker and nerdctl.
+Example:
+
+docker buildx build .
+nerdctl build .
+Faster and more secure.
+
+🔥 11. Podman (sometimes asked)
+RedHat’s Docker replacement.
+Difference:
+	• Podman is daemonless
+	• Supports rootless containers
+	• CLI is same as Docker
+
+🔥 12. Kata Containers / gVisor (secure runtimes)
+Security-focused container runtimes:
+	• gVisor (Google) → sandboxed
+	• Kata Containers → hardware-based isolation (virtual machines)
+Interview point:
+“Kubernetes supports multiple runtimes because every organization has different requirements like performance, security, or isolation."
+
+🎯 FINAL SUMMARY — This Topic Is Fully Completed
+You now know:
+✔ Docker
+✔ containerd
+✔ runc
+✔ CRI / dockershim
+✔ CRI-O
+✔ nerdctl
+✔ crictl
+✔ OCI image
+✔ Podman
+✔ BuildKit
+✔ Secure runtimes (gVisor, Kata)
+This is complete DevOps interview coverage.
+
+
+	
+	
+	
+	
+
+
+Local System Solutions -->
+	1. Docker Desktop
+	2. Minikube
+	3. kubeadm
+
+Hosted Version -->
+	1. Google cloud platform (GKE)
+	2. Amazon Web services (EKS)
+	3. Microsoft Azure (AKS)
+
+
+
+
+🚀 What is Minikube? (Very Simple Explanation)
+Minikube = A lightweight tool to run Kubernetes locally on your laptop.
+It creates:
+✔ 1 Kubernetes node
+✔ Kubelet
+✔ API Server
+✔ Scheduler
+✔ Controller Manager
+✔ etcd
+✔ Docker/Containerd inside VM
+Basically, a full Kubernetes cluster but in ONE machine.
+
+🔥 Why Minikube is used?
+Because:
+	• You cannot install a full multi-node Kubernetes cluster on a laptop.
+	• Minikube simulates a real cluster, so you can test:
+✔ Pods
+✔ Deployments
+✔ Services
+✔ Ingress
+✔ Storage
+✔ ConfigMaps
+✔ Secrets
+Without paying AWS EKS, GKE, AKS money.
+
+🧠 How Minikube Works Internally (Architecture)
+
+Your Laptop
+    |
+ Minikube VM / Docker Driver
+    |
+Single Node Kubernetes Cluster
+    ├── kube-apiserver
+    ├── kube-scheduler
+    ├── kube-controller-manager
+    ├── kubelet
+    ├── kube-proxy
+    └── etcd
+
+Minikube can run using drivers:
+	• VirtualBox
+	• Docker
+	• Hyper-V
+	• VMware
+	• None (bare-metal)
+
+⚙️ Minikube Drivers (Interview Important)
+Minikube needs a driver to create a cluster:
+Driver	Description
+docker	Runs Kubernetes inside Docker containers
+virtualbox	Creates a VirtualBox VM
+hyperv	Hyper-V VM (Windows Pro)
+none	Runs Kubernetes directly on the host (Linux only)
+Most common now = Docker Driver
+(Because VM unnecessary)
+
+🎯 Minikube Commands (99% used in interviews)
+✔ Start cluster
+
+minikube start
+✔ Stop cluster
+
+minikube stop
+✔ Delete cluster
+
+minikube delete
+✔ Check status
+
+minikube status
+✔ Open Dashboard UI
+
+minikube dashboard
+✔ Use Minikube’s Docker daemon
+
+eval $(minikube docker-env)
+Used when building images inside minikube so Kubernetes can access them.
+✔ Get minikube IP
+
+minikube ip
+✔ Enable addons
+
+minikube addons list
+minikube addons enable ingress
+minikube addons enable metrics-server
+
+🗂️ Minikube Use Cases (Real DevOps)
+Feature	Minikube Usage
+Learning Kubernetes	Yes
+Local testing	Yes
+Ingress testing	Yes
+Helm charts	Yes
+Operators	Yes
+CI/CD pipelines	Yes
+Production	❌ Never
+
+💡 Minikube vs Kubernetes vs Kubeadm vs Kind
+Tool	Use
+Minikube	Single-node cluster for learning
+Kubernetes	Production, multi-node, cloud
+Kubeadm	Manual setup of multi-node cluster
+Kind (Kubernetes in Docker)	Fast testing for CI/CD
+Interview Question:
+“What is difference b/w Minikube & Kind?”
+Answer:
+Minikube uses VM/Docker to create a Kubernetes single-node cluster for learning.
+Kind runs Kubernetes completely inside Docker containers, mainly for testing CI/CD pipelines.
+
+📌 Minikube Interview Questions
+1. What is Minikube?
+Minikube is a lightweight Kubernetes implementation used to run a single-node Kubernetes cluster locally for learning and testing.
+2. Why do we use Minikube?
+Because it allows quick testing without using cloud platforms like EKS or GKE.
+3. How does Minikube start a cluster?
+It uses a driver like Docker or VirtualBox to create a VM/container and installs Kubernetes components inside it.
+4. How to access Kubernetes Dashboard in Minikube?
+
+minikube dashboard
+5. Can Minikube be used for production?
+❌ No — it’s only for development and learning.
+6. Difference between Minikube and Kubernetes?
+Minikube = Single-node
+Kubernetes = Multi-node, scalable production cluster.
+
+📒 Short Notes (Exam + Interview Ready)
+	• Minikube = Single Node Kubernetes cluster for learning.
+	• Uses drivers (Docker, VirtualBox, Hyper-V).
+	• Provides addons like Ingress, Dashboard, Registry.
+	• Not for production.
+	• Supports Docker/containerd runtimes.
+	• Useful for practice of kubectl commands.
+
+
+The containers are encapsulated into a kubernetes object known as pods.
+A pod is a single instance of an application. A pod is the smallest object that you can create in kubernetes.
+
+Pod usually have one-to-one relationship with containers running your application. To scale up you Create new pods.
+
+A pod can have multiple container.
+
+
+A note about creating pods using kubectl run.
+To create a pod from the command line, use the command:
+Create an NGINX Pod
+kubectl run nginx --image=nginx
+As of version 1.18, kubectl run (without any arguments such as --generator ) will create a pod instead of a deployment.
+To create a deployment using imperative command, use kubectl create:
+kubectl create deployment nginx --image=nginx
+Kubernetes Concepts –  https://kubernetes.io/docs/concepts/
+Pod Overview-  https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/
+
+From <https://learn.kodekloud.com/user/courses/kubernetes-for-the-absolute-beginners-hands-on-tutorial/module/5b966a64-54c6-46ff-b284-4299f34c8f84/lesson/b1506b1b-9e80-4ba8-9ad4-16429d8cd141> 
+
+
+
+
+🟡 What is YAML? (Easy Definition)
+YAML = “YAML Ain’t Markup Language”
+It is a human-readable, indentation-based data format used for writing configuration files.
+👉 YAML is used to define infrastructure, pipelines, Kubernetes configs, Docker Compose files, etc.
+
+🟢 Why YAML?
+Because YAML is:
+	• Easy to read
+	• Easy to write
+	• More understandable than JSON or XML
+	• Used everywhere in DevOps
+
+🔵 Where YAML is used in DevOps?
+Tool	YAML Used For
+Kubernetes	Pods, Deployments, Services
+Ansible	Playbooks
+Docker Compose	docker-compose.yml
+GitHub Actions	workflows
+Jenkins	Jenkins pipeline as YAML
+Terraform	(Not YAML but similar feel)
+Helm	Charts + values.yaml
+CloudFormation	Templates
+
+🔴 YAML Basic Rules
+1️⃣ Indentation matters
+You must use spaces, not tabs.
+
+app:
+  name: nginx
+  port: 80
+
+2️⃣ Key: Value format
+
+name: chandan
+age: 23
+
+3️⃣ Lists (Use -)
+
+fruits:
+  - apple
+  - banana
+  - orange
+
+4️⃣ Nested objects
+
+server:
+  name: my-server
+  config:
+    cpu: 2
+    memory: 4Gi
+
+🟣 Sample YAML (Kubernetes Pod)
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+    - name: nginx
+      image: nginx:latest
+
+🟠 YAML vs JSON (Simple Comparison)
+YAML	JSON
+Easy to read	Harder
+Supports comments	No comments
+Uses indentation	Uses {} and []
+Best for DevOps	Best for APIs
+YAML is basically human-friendly JSON.
+
+🟢 One Sentence Answer (For Interviews)**
+YAML is a simple, human-readable data format used to define configuration in DevOps tools like Kubernetes, Docker Compose, and Ansible
+
+
+
+apiVersion:
+kind:
+metadata:
+
+
+spec:
+
+These are the top level or root-level properties.
+
+
+
+
+
+
+
+
+kubectl run nginx --image=nginx
+
+-->Create a new pod with the name redis and the image redis123.
+Utilize a pod-definition YAML file. Please note that the image name redis123 is intentionally incorrect. Do NOT correct the image at this stage; you will address this in the subsequent task.
+
+->
+kubectl run redis --image=redis123 --dry-run=client -o yaml > redis-definition.yaml
+
+->
+kubectl create -f redis-definition.yaml
+
+->
+kubectl get pods
+
+
+
+
+Here is a simple and clear explanation of your command:
+
+✅ Command
+
+kubectl run redis --image=redis123 --dry-run=client -o yaml > redis-definition.yaml
+This command does NOT create a pod.
+Instead, it generates a YAML file for the pod.
+
+🔍 Breakdown of each part
+1️⃣ kubectl run redis
+	• This tells Kubernetes:
+“Create a Pod named redis”
+2️⃣ --image=redis123
+	• The container inside the pod will use image:
+redis123
+	• (It may not exist; this is just a name)
+3️⃣ --dry-run=client
+	• VERY IMPORTANT
+	• This means: Do NOT actually create the pod.
+	• Only simulate the creation on the client side.
+	• Used to generate YAML without applying it.
+4️⃣ -o yaml
+	• Output the pod definition in YAML format.
+5️⃣ > redis-definition.yaml
+	• Redirect the output into a file named:
+redis-definition.yaml
+So you are saving the pod YAML into a file instead of showing on screen.
+
+⭐ What you finally get
+A YAML file containing a pod definition:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis
+spec:
+  containers:
+  - name: redis
+    image: redis123
+Stored in:
+redis-definition.yaml
+
+🎯 Why do we use this command?
+✔ To generate YAML files quickly
+✔ To modify YAML before applying
+✔ To use in GitOps / CI-CD
+✔ To avoid creating mistakes in manual YAML writing
+
+💡 After editing, you can create the pod like this:
+
+kubectl apply -f redis-definition.yaml
+
+
+
+
+--> kubectl edit pod redis
+
+
+A Replication Controller (RC) is an old Kubernetes object used to make sure that a specified number of Pod replicas are always running.
+👉 If 3 pods must run → RC ensures 3 pods are running always.
+
+
+🟥 Replication Controller is OLD (Deprecated)
+🚫 RC is outdated.
+✔ Today we use ReplicaSet (RS) and Deployment.
+
+
+
+ReplicationController	ReplicaSet
+Old	New
+Less features	Supports selectors, rolling updates
+Not used in modern Kubernetes	Used under Deployment
+
+
+
+Replication means running multiple identical copies of a Pod to ensure:
+	1. High availability (if one pod dies, others keep running)
+	2. Load distribution (traffic gets shared across replicas)
+	3. Auto-healing (Kubernetes replaces failed pods automatically)
+
+
+
+Replication means running multiple identical copies of a Pod to ensure:
+	1. High availability (if one pod dies, others keep running)
+	2. Load distribution (traffic gets shared across replicas)
+	3. Auto-healing (Kubernetes replaces failed pods automatically)
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myapp-rs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+kubectl edit replicaset name-of-replicaset
+
+Scale the nmber of replicas ->
+
+kubectl scale replicaset name-of-replicaset --replicas=2
+
+	
+
+
+The deployment provides us with the capability to upgrade the underlying instances seamlessly using rolling updates undo changes and pause and resume changes as required .
+
+
+
+
+
+
+
+
+
+
+
+🚀 1. Deployment Update
+A Deployment is updated when you:
+	• Change the image
+	• Change replicas
+	• Change environment variables
+	• Change configuration
+✔ Update using kubectl set image
+This is the most common update method in DevOps pipelines.
+
+kubectl set image deployment/my-deploy my-container=myrepo/myimage:v2
+This will:
+	• Start new pods using v2
+	• Gradually remove old pods
+	• Create a rolling update
+
+✔ Update using kubectl apply
+If you modify YAML (Deployment file), apply it:
+
+kubectl apply -f deployment.yaml
+
+✔ View rollout status
+Always check deployment status:
+
+kubectl rollout status deployment/my-deploy
+
+🔄 2. Deployment Rollback
+Rollback = return to the previous version of the Deployment.
+Kubernetes stores Deployment revisions.
+
+✔ Step 1: Check rollout history
+
+kubectl rollout history deployment/my-deploy
+Example output:
+
+REVISION
+1
+2
+3
+
+✔ Step 2: Rollback to previous version
+
+kubectl rollout undo deployment/my-deploy
+This returns deployment to the last good state.
+
+✔ Step 3: Rollback to specific revision
+
+kubectl rollout undo deployment/my-deploy --to-revision=2
+
+👀 3. View current rollout
+To monitor the update process:
+
+kubectl get pods -w
+-w = watch live updates.
+
+♻ 4. Pause and Resume Deployment (Advanced)
+Use when you want to make multiple changes safely.
+Pause rollout:
+
+kubectl rollout pause deployment/my-deploy
+Make changes:
+
+kubectl apply -f deployment.yaml
+Resume:
+
+kubectl rollout resume deployment/my-deploy
+
+🔥 5. Real World Example
+Update application to new image:
+
+kubectl set image deployment/frontend frontend=nginx:1.27
+Check rollout:
+
+kubectl rollout status deployment/frontend
+Something broke → rollback:
+
+kubectl rollout undo deployment/frontend
+
+🧠 6. How Rolling Update Works (Simple Explanation)
+	• Kubernetes creates new pods
+	• Waits until new pods are healthy (ReadinessProbe)
+	• Slowly terminates old pods
+	• Keeps service running without downtime
+
+📌 Important Interview Points
+Deployment strategies:
+	1. RollingUpdate (default)
+	2. Recreate (delete old then create new)
+Deployment stores revision history
+Rollback is SAFE and FAST
+
+
+
+When you first create a deployment , it triggers a rollout , a new rollout creates  a new deployment revision. 
+
+
+
+
+
+
+we cant destroy five running instance at once it will response to application downtime.I
+-->Its Recreate strategy.
+
+Rolling Update-->
+--> take down older version and bring up newer version one by one.
+--> this way the application never goes down and the upgrade  is seamless.
+--> IF you do not specify a strategy while creating the deployment , it will assume it to be rolling update.
+--> In Other words , rolling updates is the default deployment strategy .
+
+
+
+doing this way will result in the deployment definition file having a different configuration
+we need to be carefull here.
+
+
+
