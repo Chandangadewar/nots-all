@@ -1,0 +1,1023 @@
+1️⃣ What is the difference between Read Replica and Multi-AZ?
+🔹 Read Replica
+	• Used for performance (read scaling)
+	• Creates a read-only copy of the primary database
+	• Data is asynchronously replicated
+	• Can be in same or different AZ
+	• Used for read-heavy workloads
+	• Manual failover (cannot auto-promote unless you do it)
+🔹 Multi-AZ
+	• Used for high availability & disaster recovery
+	• Creates a standby replica
+	• Data is synchronously replicated
+	• Standby cannot be read
+	• Automatic failover
+	• Used for production reliability
+📊 Comparison Table
+Feature	Read Replica	Multi-AZ
+Purpose	Performance	Availability
+Read allowed	Yes	No
+Replication	Async	Sync
+Failover	Manual	Automatic
+📌 Interview line:
+	Read Replica is for performance, Multi-AZ is for high availability.
+
+2️⃣ What are the types of Placement Groups?
+Placement Groups control how EC2 instances are placed on hardware.
+🔹 1. Cluster Placement Group
+	• Instances placed close together
+	• Low latency, high throughput
+	• Used for HPC, big data
+🔹 2. Spread Placement Group
+	• Instances placed on separate hardware
+	• High availability
+	• Used for critical applications
+🔹 3. Partition Placement Group
+	• Instances divided into logical partitions
+	• Each partition isolated
+	• Used for large distributed systems (HDFS, Kafka)
+
+3️⃣ You need to allow HTTP & HTTPS to public EC2 but block all other access. How?
+✅ Solution: Security Group
+🔹 Steps:
+	• Open port 80 (HTTP) → 0.0.0.0/0
+	• Open port 443 (HTTPS) → 0.0.0.0/0
+	• Do NOT add any other inbound rules
+	• Security Groups are deny by default
+🔹 Why SG?
+	• Stateful
+	• Automatically blocks all other traffic
+NACL too.
+📌 Interview Tip:
+	Use Security Groups, not NACLs, for instance-level access control.
+	
+	
+
+4️⃣ How would you implement Lifecycle Policies to reduce S3 cost?
+🔹 What are Lifecycle Policies?
+Rules that automatically move or delete objects based on age.
+🔹 Example Strategy:
+	• Day 0–30 → S3 Standard
+	• Day 30–90 → S3 IA
+	• Day 90+ → Glacier
+	• After 365 days → Delete
+🔹 Benefits:
+	• Lower storage cost
+	• No manual effort
+	• Automated
+📌 Interview line:
+	Lifecycle policies move objects to cheaper storage classes automatically.
+
+5️⃣ What is the difference between Read Replica and Multi-AZ?
+➡️ Same as Question 1 (Answered above)
+📌 Interviewers repeat this intentionally to check consistency.
+
+6️⃣ Which database engines are supported by Amazon RDS?
+🔹 RDS Supported Engines:
+	1. MySQL
+	2. PostgreSQL
+	3. MariaDB
+	4. Oracle
+	5. SQL Server
+	6. Amazon Aurora (MySQL & PostgreSQL compatible)
+📌 Interview Tip:
+	Aurora is AWS-native and faster than traditional MySQL/Postgres.
+
+7️⃣ Difference between ALB and NLB
+🔹 Application Load Balancer (ALB)
+	• Layer 7 (HTTP/HTTPS)
+	• Path-based & host-based routing
+	• Used for web applications
+	• Supports WAF
+🔹 Network Load Balancer (NLB)
+	• Layer 4 (TCP/UDP)
+	• Extremely fast
+	• Used for real-time, low-latency apps
+	• Static IP supported
+📊 Comparison
+Feature	ALB	NLB
+OSI Layer	7	4
+Routing	Advanced	Simple
+Speed	Fast	Ultra-fast
+
+8️⃣ What are the EC2 purchasing options?
+🔹 1. On-Demand
+	• Pay per second
+	• No commitment
+	• Expensive
+🔹 2. Reserved Instances
+	• 1 or 3 year commitment
+	• Up to 75% cheaper
+🔹 3. Savings Plans
+	• Flexible pricing model
+	• Recommended replacement for RIs
+🔹 4. Spot Instances
+	• Uses unused capacity
+	• Up to 90% cheaper
+	• Can be terminated anytime
+🔹 5. Dedicated Host
+	• Physical server dedicated to you
+	• Used for compliance
+Dedicated instance
+Capacity Reservation
+
+9️⃣ New EC2 in ASG not receiving traffic. Why?
+🔹 Possible Reasons:
+	1. Instance not healthy
+	2. Security Group blocks traffic
+	3. Target group health check failing
+	4. Wrong port in target group
+	5. Application not running
+	6. Wrong subnet (private instead of public)
+📌 Interview Tip:
+	Always check health checks and security groups first.
+
+🔟 Difference between NAT Gateway and Bastion Host
+🔹 NAT Gateway
+	• Used for outbound internet access
+	• For private instances
+	• No inbound access
+	• Fully managed
+🔹 Bastion Host
+	• Used for SSH/RDP access
+	• Allows inbound admin access
+	• Manual maintenance required
+📊 Comparison:
+Feature	NAT	Bastion
+Purpose	Internet access	Admin login
+Inbound	No	Yes
+Managed	Yes	No
+
+1️⃣1️⃣ What is Default VPC vs Custom VPC?
+🔹 Default VPC
+	• Created automatically
+	• Has internet gateway
+	• Public subnets by default
+	• Less secure
+🔹 Custom VPC
+	• Created by user
+	• Full control
+	• More secure
+	• Used in production
+📌 Interview line:
+	Custom VPC is always recommended for production.
+
+1️⃣2️⃣ How do you get charged for CloudWatch?
+🔹 Charged for:
+	• Custom metrics
+	• Alarms
+	• Logs ingestion & storage
+	• Dashboards (beyond free tier)
+🔹 Free Tier:
+	• Basic EC2 metrics
+	• Limited alarms
+
+1️⃣3️⃣ Stop EC2 if CPU <10% for 1 hour – How?
+✅ Solution: CloudWatch + Lambda
+🔹 Steps:
+	1. Create CloudWatch alarm:
+		○ Metric: CPUUtilization
+		○ Condition: <10%
+		○ Duration: 1 hour
+	2. Alarm triggers SNS
+	3. SNS triggers Lambda
+	4. Lambda stops EC2 instance
+📌 Interview Tip:
+	CloudWatch alone cannot stop EC2; Lambda is required.
+	
+	
+	1️⃣ What is Virtualization?
+	✅ Definition:
+	Virtualization is a technology that allows multiple virtual machines (VMs) to run on a single physical server by sharing hardware resources like CPU, RAM, storage, and network.
+	🔹 Simple Example:
+	One physical server → 5 virtual servers (Linux, Windows, DB, App)
+	
+	2️⃣ Benefits of Virtualization
+	🔹 Advantages:
+		• Better hardware utilization
+		• Cost reduction (less servers)
+		• Faster server deployment
+		• Isolation between VMs
+		• Easy backup & recovery
+		• Scalability
+		• High availability
+	📌 Interview Line:
+		Virtualization helps run multiple isolated OS on one physical machine efficiently.
+	
+	3️⃣ What is a Virtual Machine (VM)?
+	✅ Definition:
+	A VM is a software-based computer that runs an operating system and applications just like a physical machine.
+	🔹 Characteristics:
+		• Has its own OS
+		• Has virtual CPU, RAM, Disk
+		• Isolated from other VMs
+		• Created using a hypervisor
+	
+	4️⃣ What is a Hypervisor?
+	✅ Definition:
+	A hypervisor is software that creates, manages, and runs virtual machines by allocating physical hardware resources.
+	
+	5️⃣ Types of Hypervisors
+	🔹 Type 1 – Bare Metal Hypervisor
+		• Runs directly on hardware
+		• High performance
+		• More secure
+		• Used in data centers
+	Examples:
+		• VMware ESXi
+		• Microsoft Hyper-V
+		• Xen
+	
+	🔹 Type 2 – Hosted Hypervisor
+		• Runs on top of an OS
+		• Easy to install
+		• Less performance
+	Examples:
+		• VMware Workstation
+		• VirtualBox
+	
+	6️⃣ Difference: Bare Metal vs Hosted Hypervisor
+	Feature	Bare Metal	Hosted
+	Runs on	Hardware	Operating System
+	Performance	High	Lower
+	Security	High	Medium
+	Use case	Production	Testing/Lab
+	
+	7️⃣ Difference between Cloud Models (IaaS, PaaS, SaaS)
+	🔹 IaaS (Infrastructure as a Service)
+		• You manage OS & apps
+		• AWS manages hardware
+	Examples:
+		• AWS EC2
+		• Azure VM
+	
+	🔹 PaaS (Platform as a Service)
+		• OS & runtime managed by provider
+		• You deploy code
+	Examples:
+		• AWS Elastic Beanstalk
+		• Azure App Service
+	
+	🔹 SaaS (Software as a Service)
+		• Fully managed application
+	Examples:
+		• Gmail
+		• Office 365
+		• Salesforce
+	
+	8️⃣ What is an Availability Zone (AZ)?
+	✅ Definition:
+	An Availability Zone is a physically separate data center within an AWS region.
+	🔹 Purpose:
+		• High availability
+		• Fault tolerance
+		• Disaster recovery
+	📌 Interview Tip:
+		Multiple AZs prevent single point of failure.
+	
+	9️⃣ Explain Key Pair (AWS)
+	✅ Definition:
+	A key pair is a set of public and private keys used for secure login to EC2 instances.
+	
+	🔟 What is a Public Key?
+		• Stored in EC2 instance
+		• Used to encrypt data
+		• Shared openly
+	
+	1️⃣1️⃣ What is a Private Key?
+		• Stored with the user
+		• Used to decrypt data
+		• Must be kept secret
+		• Cannot be recovered if lost
+	📌 Interview Line:
+		Public key locks, private key unlocks.
+	
+	1️⃣2️⃣ What is a Security Group in AWS?
+	✅ Definition:
+	A Security Group is a virtual firewall that controls inbound and outbound traffic for EC2.
+	🔹 Features:
+		• Stateful
+		• Allows rules only (no deny)
+		• Instance-level security
+	
+	1️⃣3️⃣ What is a Port?
+	✅ Definition:
+	A port is a logical communication endpoint used by applications.
+	🔹 Common Ports:
+		• SSH → 22
+		• HTTP → 80
+		• HTTPS → 443
+		• RDP → 3389
+	
+	1️⃣4️⃣ What is EC2 and its Types?
+	✅ Definition:
+	EC2 (Elastic Compute Cloud) provides resizable virtual servers in AWS.
+	🔹 Instance Families:
+		• General Purpose (t2, t3)
+		• Compute Optimized (c5)
+		• Memory Optimized (r5)
+		• Storage Optimized (i3)
+	
+	1️⃣5️⃣ What is Status Check in AWS?
+	🔹 Types:
+		1. System Status Check – AWS hardware
+		2. Instance Status Check – OS issues
+	📌 Interview Tip:
+		Failed system check requires instance stop/start.
+	
+	1️⃣6️⃣ What is a Jump Server / Bastion Host?
+	✅ Definition:
+	A bastion host is a secure EC2 instance used to access private instances.
+	🔹 Purpose:
+		• Admin access
+		• Security control
+		• SSH/RDP gateway
+	
+	1️⃣7️⃣ What is a Launch Template?
+	✅ Definition:
+	A launch template stores EC2 configuration settings used to launch instances.
+	🔹 Contains:
+		• AMI
+		• Instance type
+		• Security group
+		• Key pair
+		• User data
+	Used in:
+		• Auto Scaling Groups
+	
+	1️⃣8️⃣ Billing & Purchasing Options in AWS
+	🔹 Options:
+		1. On-Demand
+		2. Reserved Instance
+		3. Savings Plan
+		4. Spot Instance
+		5. Dedicated Host
+	
+	1️⃣9️⃣ Difference: Savings Plan vs Reserved Instance
+	Feature	Savings Plan	Reserved Instance
+	Flexibility	High	Low
+	Instance type	Any	Fixed
+	Recommendation	Best	Older model
+	
+	2️⃣0️⃣ What is EBS Volume and Its Types?
+	✅ Definition:
+	EBS (Elastic Block Store) is persistent block storage for EC2.
+	🔹 Types:
+		• SSD (4 types): gp3, gp2, io1, io2
+		• HDD (2 types): st1, sc1
+		• Magnetic (1 type – legacy)
+	
+	2️⃣1️⃣ Mounting (Temporary vs Permanent)
+	🔹 Temporary Mount:
+		• Lost after reboot
+		• Example: Instance store
+	🔹 Permanent Mount:
+		• Persists after reboot
+		• Example: EBS volume
+	
+	2️⃣2️⃣ Snapshot & Data Lifecycle Manager
+	🔹 Snapshot:
+		• Backup of EBS volume
+		• Stored in S3
+		• Incremental
+	🔹 Data Lifecycle Manager (DLM):
+		• Automates snapshots
+		• Retention policies
+		• Cost optimization
+	📌 Interview Line:
+		DLM automates backup and deletion of snapshots.
+	
+	
+	
+	22️⃣ I have lost my PEM file. How to connect to the EC2 instance?
+	🔴 Important Point
+		• You CANNOT directly connect to an EC2 instance if the PEM file is lost.
+		• AWS does not store PEM files for security reasons.
+	
+	✅ Recovery Methods
+	🔹 Method 1: Use EC2 Instance Connect
+	✔ Only works if:
+		• Amazon Linux
+		• Port 22 open
+		• Instance running
+	📌 AWS Console → EC2 → Connect → EC2 Instance Connect
+	
+	🔹 Method 2: Detach Root EBS Volume (Most Common Interview Answer)
+	Steps:
+		1. Stop the instance
+		2. Detach root EBS volume
+		3. Attach volume to another EC2
+		4. Mount the volume
+		5. Edit ~/.ssh/authorized_keys
+		6. Add new public key
+		7. Reattach volume
+		8. Start instance & login
+	
+	🔹 Method 3: Use SSM Session Manager
+	✔ Requires:
+		• SSM agent
+		• IAM role
+		• Internet/VPC endpoint
+	
+	📌 Interview Line:
+		Lost PEM cannot be recovered, but access can be restored using EBS detach or SSM.
+	
+	23️⃣ Difference between Layer 4 and Layer 7 Load Balancer
+	🔹 Layer 4 Load Balancer
+		• Works at Transport Layer
+		• Uses IP & Port
+		• Very fast
+		• No content inspection
+	Example:
+		• Network Load Balancer (NLB)
+	
+	🔹 Layer 7 Load Balancer
+		• Works at Application Layer
+		• Uses URL, headers, cookies
+		• Supports routing rules
+	Example:
+		• Application Load Balancer (ALB)
+	
+	📊 Comparison
+	Feature	L4	L7
+	OSI Layer	4	7
+	Routing	IP/Port	Path/Host
+	Speed	Faster	Slightly slower
+	Example	NLB	ALB
+	
+	24️⃣ What is NAT Gateway?
+	✅ Definition:
+	A NAT Gateway allows private EC2 instances to access the internet for outbound traffic without allowing inbound traffic.
+	🔹 Key Points:
+		• Used in private subnets
+		• Only outbound access
+		• Fully managed service
+		• Highly available
+	📌 Example:
+	Private EC2 → NAT Gateway → Internet
+	
+	25️⃣ Difference between Internet Gateway and NAT Gateway
+	Feature	Internet Gateway	NAT Gateway
+	Purpose	Public internet access	Private outbound access
+	Inbound	Yes	No
+	Subnet type	Public	Private
+	Direction	Two-way	One-way
+	Attachment	VPC	Subnet
+	📌 Interview Line:
+		Internet Gateway is for public access, NAT Gateway is for private outbound access.
+	
+	26️⃣ Can we access a resource in one VPC from another VPC?
+	✅ Answer:
+	YES, using:
+		• VPC Peering
+		• Transit Gateway
+		• VPN
+		• Direct Connect
+	📌 Most common method: VPC Peering
+	
+	27️⃣ What is VPC Peering Connection?
+	✅ Definition:
+	VPC Peering is a network connection that allows two VPCs to communicate privately using AWS internal network.
+	🔹 Key Points:
+		• No internet required
+		• Low latency
+		• CIDR blocks must not overlap
+		• One-to-one connection
+	📌 Use case:
+	App in VPC-A → DB in VPC-B
+	
+	28️⃣ What is NACL (Network Access Control List)?
+	✅ Definition:
+	A NACL is a stateless firewall that controls traffic at the subnet level.
+	🔹 Features:
+		• Stateless (inbound & outbound rules needed)
+		• Allows & Denies rules
+		• Evaluated in order
+		• Applies to all instances in subnet
+	
+	29️⃣ Difference between Security Group and NACL
+	📊 Comparison Table
+	Feature	Security Group	NACL
+	Level	Instance	Subnet
+	Type	Stateful	Stateless
+	Rules	Allow only	Allow & Deny
+	Rule order	Not ordered	Ordered
+	Use case	Fine-grained	Network-wide
+	📌 Interview Line:
+		Security Groups are instance-level and stateful, NACLs are subnet-level and stateless.
+	
+day 2
+    Complete information of instance?
+
+
+
+Git - version control system
+Github- GitHub is a cloud-based platform that hosts Git repositories.
+👉 Git is a tool
+👉 GitHub is a platform
+
+
+Git branches-
+Command	Use
+git branch	List branches
+git branch name	Create branch
+git checkout name	Switch branch
+git checkout -b name	Create & switch
+git merge name	Merge branch
+git branch -d name	Delete branch
+
+
+1️⃣ Git Flow (Most Popular – Interview Favorite)
+Branches Used
+	• main / master → production code
+	• develop → testing & integration
+	• feature/ → new features
+	• release/ → final testing
+	• hotfix/ → urgent production fix
+Flow
+
+feature → develop → release → main
+                     ↓
+                  hotfix
+ 
+
+
+day 3
+
+    
+
+
+
+
+
+
+
+sudo -i - y
+
+# Add Docker's official GPG key:
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+
+sudo apt update
+
+
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+docker pull nginx (we will get image id)
+
+Docker run -d -P --name ascsdfds(random name) (image id)
+
+day 4
+  Game
+
+
+
+
+
+
+
+
+
+https://docs.docker.com/engine/install/ubuntu/
+https://hub.docker.com/r/mukunddeo9325/super-mario
+
+
+day=
+  Commands - 
+docker stats
+docker top
+
+Set environment command-
+docke run -d - P --name cont1 -e env=dev nginx
+
+Check environment - echo $env
+
+docker top id (process list )
+
+docker tag - docker tag image_ID image_name
+
+docker login -u ID -p
+
+Container to image-
+docker comit cont_ID
+
+📝 What I did (Docker Notes – Short)
+1️⃣ Pulled NGINX image from Docker Hub
+
+docker pull nginx
+	• Downloaded official nginx:latest image
+	• Image ID: c881927c4077
+
+2️⃣ Verified Docker image
+
+docker images
+	• Confirmed nginx image is available locally
+
+3️⃣ Tagged the image for Docker Hub
+
+docker tag c881927c4077 chandan240603/demo:v1
+	• Renamed image to match Docker Hub format
+	• Format: username/repository:tag
+
+4️⃣ Logged in to Docker Hub
+
+docker login -u chandan240603
+	• Authenticated using Docker Hub credentials / PAT
+	• Login successful
+
+5️⃣ Pushed image to Docker Hub
+
+docker push chandan240603/demo:v1
+	• Image successfully uploaded to Docker Hub
+	• Layers reused from nginx (mounted)
+	• Push completed with digest
+
+✅ Final Result
+	• Docker image nginx pushed to Docker Hub
+	• Repository: chandan240603/demo
+	• Tag: v1
+
+
+
+    day5 
+
+    docker pull nginx
+docker images
+docker run -d -P --name cont1 nginx
+docker ps
+docker ps -a
+docker ps -aq [container id]
+vim index.html
+docker ps
+docker cp index.html
+ls
+docker cp index.html ID:/use/share/nginx/html/
+ID - paste it in url with public id
+
+docker images -a
+
+portal:v1 ID
+docker save portal.tar ID[ID pasted here]
+
+ls
+portal.tar
+
+docker load -i portal.tar
+
+docker tag image_ID Username/portal:v1
+docker images
+
+docker image prune [removed untagged image]
+
+
+ECR--> Elastic Container Registry
+ECR = Elastic Container Registry
+It is AWS’s private Docker image storage service.
+Think of it like:
+ GitHub for Docker Images
+ A safe place to store, push, and pull container images
+
+
+sudo snap install aws-cli -- classic
+aws sts get-caller-idenity
+login command from ECR repository
+
+
+Docker Network - 
+
+bridge 
+host 
+bone
+
+docker network ls
+docker container_ID inspect
+
+Driver	Description
+bridge	The default network driver.
+host	Remove network isolation between the container and the Docker host.
+none	Completely isolate a container from the host and other containers.
+overlay	Swarm Overlay networks connect multiple Docker daemons together.
+ipvlan	Connect containers to external VLANs.
+macvlan	Containers appear as devices on the host's network.
+
+
+
+ docker run -d -P --network bridge nginx
+
+docker network create --driver bridge --subnet 172.169.0.0/16 custom-network
+
+docker run -d -P --network custom-network -v my-vol:/usr/share/nginx/html nginx
+
+docker ps
+
+
+
+
+
+
+
+day6 
+   docker run -d -P --name cont1 nginx
+    2  docker images
+    3  ls
+    4  docker ps
+    5  curl ifconfig.me
+    6  docker c881927c4077 inspect
+    7  docker inspect c881927c4077
+    8  docker ps
+    9  vim index.html
+   10  docker ps
+   11  docker cp index.html
+   12  ls
+   13  docker ps index.html e120eebffb7e:/usr/share/nginx/html
+   14  docker cp index.html e120eebffb7e:/usr/share/nginx/html
+   15  docker ps
+   16  docker commit e120eebffb7e portal
+   17  docker ps
+   18  docker images
+   19  sudo snap install aws -cli --classic
+   20  sudo snap install aws-cli --classic
+   21  history
+
+
+s3 
+
+docker images
+docker save -o test.tar Image_ID
+ls
+aws s3 ls
+bucket _name
+aws s3 cp test.tar s3:// bucker _name
+aws s3 ls s3://Bucket_name
+
+aws console s3
+check bucker objects
+
+how to create dir in s3
+
+  day 7
+
+  Docker volume
+
+docker volume ls
+    2  docker volume create mydata
+    3  docker volume ls
+    4  docker inspect volume mydata
+    5  docker pull nginx
+    6  vim index.html
+    7  docker run -d -P --name cont1 -v mydata c881927c
+    8  docker ps
+    9  docker inspect 604b3ca44661
+   10  df -h
+docker run - d -P -v mydata:/usr/share/nginx/html nginx
+docker cp - d -P -v mydata:/usr/share/nginx/html nginx
+
+docker run - d -P --name  test - v mydata:/usr/share/nginx/html nginx
+
+
+
+mkidir - p /mnt/test
+ls /mnt/test/
+docker run -d -P --name voltest -v /mnt/test:/usr/share/nginx/html nginx
+docker ps
+curl ifconfig.me
+
+
+day 8
+  -Set of instruction to build your IMAGE
+
+
+
+Instruction	Description
+ADD	Add local or remote files and directories.
+ARG	Use build-time variables.
+CMD	Specify default commands.
+COPY	Copy files and directories.
+ENTRYPOINT	Specify default executable.
+ENV	Set environment variables.
+EXPOSE	Describe which ports your application is listening on.
+FROM	Create a new build stage from a base image.
+HEALTHCHECK	Check a container's health on startup.
+LABEL	Add metadata to an image.
+MAINTAINER	Specify the author of an image.
+ONBUILD	Specify instructions for when the image is used in a build.
+RUN	Execute build commands.
+SHELL	Set the default shell of an image.
+STOPSIGNAL	Specify the system call signal for exiting a container.
+USER	Set user and group ID.
+VOLUME	Create volume mounts.
+WORKDIR	Change working directory.
+
+From <https://docs.docker.com/reference/dockerfile/> 
+
+vim dockerfile
+
+
+
+done one with chatgpt
+FROM nginx
+
+RUN apt-get update -y && apt-get install -y unzip curl
+
+# Download ZIP file
+RUN curl -L -o /root/template.zip https://templatemo.com/tm-zip-files-2020/templatemo_606_string_master.zip
+
+# Unzip
+RUN unzip -o /root/template.zip -d /root/template
+
+# Copy the extracted template to nginx html folder
+RUN cp -r /root/template/templatemo_606_string_master/* /usr/share/nginx/html/
+
+# Fix permissions
+RUN chmod -R 755 /usr/share/nginx/html
+
+history
+  docker --version
+    2  docker ps
+    3  docker images
+    4  vim dockerfile
+    5  docker build -t nginx .
+    6  docker ps
+    7  docker images
+    8  docker run -d -p 80:80 bcd8a6efc88b [img_id] 
+    9  docker ps
+   10  curl ifconfig.me
+   11  vim dockerfile
+   12  docker build -t nginx .
+   13  docker build -t mysite .
+   14  vim dockerfile
+   15  docker build -t mysite .
+   16  docker run -d -p 8080:80 mysite
+   17  curl ifconfig.me
+   18  vim dockerfile
+   19  docker build -t mysite .
+   21  docker run -d -p 9080:80 mysite
+
+
+SIR vim file -
+FROM nginx:latest
+
+# Install unzip
+RUN apt-get update && apt-get install -y unzip && rm -rf /var/lib/apt/lists/*
+
+# Download the template
+ADD https://templatemo.com/download/templatemo_600_prism_flux /tmp/template.zip
+
+# Unzip and move the contents to the Nginx html folder
+# Note: Most templates unzip into a subfolder, so we use a wildcard or specific path
+RUN unzip /tmp/template.zip -d /tmp/ && \
+    cp -r /tmp/templatemo_600_prism_flux/* /usr/share/nginx/html/ && \
+    rm -rf /tmp/*
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
+
+
+
+
+
+day 9
+git clone https://github.com/mukundDeo9325/EasyCRUD.git
+
+ls 
+cd EasyCRUD/
+ld
+cd backend/
+ls
+vim dockerfile
+install docker
+docker build -t backend
+sudo docker images
+cd . ./frontend/
+docker build -t frontend
+sudo docker images
+
+sudo docker run -d -P --name backend backend
+sudo docker ps
+sudo docker run -d -P --name frontend frontend
+sudo docker ps
+
+ [error in frontend 
+sudo docker logs cont_iD_frontend]
+
+vim nginx.config
+sudo docker ps
+sudo docker inspect Cont_ID
+in frontednd - vim nginx.config [pasted ip here in proxy_pass after http]
+
+removed that container which exited - frontend
+sudo docker rm -f cont_ID
+sudo docker rmi image_ID
+
+sudo ps -a [checked again]
+
+again in frontend
+docker build -t frontend
+sudo docker run -d -P --name frontend image_ID
+docker ps
+again Exited
+sudo docker logs cont_ID
+sudo docker inspect cont_ID
+
+sudo docker rm -f cont_ID[frontend]
+sudo docker run -d -p 3000:80 --name frontend cont_name
+
+again error exited
+
+
+sudo docker network create network_name[custom-net]
+sudo docker ps-a
+sudo docker rm -f `docker  ps -a`
+sudo docker images
+sudo docker rmi frontend_image
+[delted all cont and images]
+
+cd..
+ls
+cd ..
+cd EasyCRUD/
+vim nginx
+proxy_pass : deleted ip again written backend:808
+
+
+in frontend 
+sudo docker build -d frontend .
+sudo docker images
+sudo docker network ls
+sudo docker run-d -P --network custom-net --name backend iamge_ID
+sudo docker run-d -P --network custom-net --name frontend iamge_ID
+sudo docker ps -a
+backend running
+curl ifconfig.me
+
+
+sudo -i
+ls
+docker ps
+docker rm -f `docke ps-a`
+docker rm -f $(docker ps -a)
+apt update -y
+ls
+docke rm -f cont_ID
+docke rm -f cont_ID
+docker ps 
+empty
+docker images
+deleted images
+
+cd backend/
+vim dockerfile
+docker build -t backend .
+
+docker-updated/backend - mv dockerfile test
+ls
+src test
+cp /home/ubuntu/EasyCRUD
+docker run -d -P --network custom-net --name backend Image_id
+
+frontend -> cp /home/ubuntu/EasyCRUD/frontend/Dockerfile ./
+ls
+mv dockerfile test
+vim test [here apache is use in backend nginx is used]
+
+mv test docker file
+ls
+docker build -t frontend .
+cd
+docker ps -a
+docker images
+ 
+
+
+
+
+day 10
+exit 1 - command not available for running container
+
+
+
+apt update - y
+install docker
+git clone https://github.com/mukundDeo9325/Project-InsureMe1.git
+cd Project-InsureMe1
+apt install maven -y
+mvn clean package
+ls 
+ls target/
+docker buil -t app .
+docker run -d -p 8089:8081 --name app app[image id]
+vim docker -compose.yaml
+docker-compose up
