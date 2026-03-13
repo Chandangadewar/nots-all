@@ -1,0 +1,144 @@
+3. Main AWS Purchasing Options (VERY IMPORTANT)
+1️⃣ On-Demand Instances
+2️⃣ Reserved Instances (RI)
+3️⃣ Savings Plans
+4️⃣ Spot Instances
+5️⃣ Dedicated Hosts
+6️⃣ Dedicated Instances
+
+	☁️ IaaS, PaaS, SaaS – Detailed Explanation (Interview Ready)
+	
+	🔹 1. What Are IaaS, PaaS, and SaaS?
+	They are cloud service models that define how much control the customer has and how much the cloud provider manages.
+	📌 Simple line:
+		IaaS, PaaS, and SaaS are cloud service models that differ in the level of infrastructure and application management.
+	
+	🔹 2. IaaS – Infrastructure as a Service
+	✅ Definition:
+	IaaS provides virtualized computing infrastructure such as servers, storage, and networking over the internet.
+	
+	🔸 What the Provider Manages:
+		• Physical servers
+		• Data centers
+		• Networking
+		• Virtualization layer
+	
+	🔸 What the User Manages:
+		• Operating system
+		• Applications
+		• Runtime
+		• Security inside the OS
+	
+	🔸 Examples:
+		• AWS EC2
+		• Azure Virtual Machines
+		• Google Compute Engine
+	
+	🔸 Use Cases:
+		• Web hosting
+		• Custom applications
+		• Lift-and-shift migrations
+		• Full OS control required
+	📌 Interview one-liner:
+		IaaS gives maximum control over infrastructure with flexible scalability.
+	
+	🔹 3. PaaS – Platform as a Service
+	✅ Definition:
+	PaaS provides a ready-to-use platform for developing, running, and managing applications without managing servers or OS.
+	
+	🔸 What the Provider Manages:
+		• Servers
+		• OS
+		• Runtime
+		• Middleware
+		• Scaling
+	
+	🔸 What the User Manages:
+		• Application code
+		• Data
+	
+	🔸 Examples:
+		• AWS Elastic Beanstalk
+		• Google App Engine
+		• Azure App Service
+	
+	🔸 Use Cases:
+		• Application development
+		• Rapid deployment
+		• Microservices
+	📌 Interview one-liner:
+		PaaS allows developers to focus on code instead of infrastructure.
+	
+	🔹 4. SaaS – Software as a Service
+	✅ Definition:
+	SaaS provides fully managed software applications accessible via the internet.
+	
+	🔸 What the Provider Manages:
+		• Infrastructure
+		• OS
+		• Application
+		• Security
+		• Updates
+	
+	🔸 What the User Manages:
+		• Only usage and configuration
+	
+	🔸 Examples:
+		• Gmail
+		• Salesforce
+		• Zoom
+		• Microsoft 365
+	
+	🔸 Use Cases:
+		• Email
+		• CRM
+		• Collaboration tools
+	📌 Interview one-liner:
+		SaaS provides ready-to-use software without infrastructure management.
+	
+	🔹 5. Comparison Table (VERY IMPORTANT)
+	Feature	IaaS	PaaS	SaaS
+	User Control	High	Medium	Low
+	Infrastructure	Provider	Provider	Provider
+	OS	User	Provider	Provider
+	App Management	User	User	Provider
+	Ease of Use	Low	Medium	High
+	
+	🔹 6. Real-World Analogy (Interview Favorite)
+	🍕 Pizza Analogy:
+		• IaaS → Make pizza at home
+		• PaaS → Ready base, add toppings
+		• SaaS → Order pizza and eat
+	
+	🔹 7. AWS Mapping (INTERVIEW IMPORTANT)
+	Model	AWS Examples
+	IaaS	EC2, EBS, VPC
+	PaaS	Elastic Beanstalk, RDS
+	SaaS	AWS WorkMail, Amazon Chime
+	
+	🔹 8. When to Use Which?
+	Use IaaS when:
+		• You need OS-level control
+		• Custom environments
+	Use PaaS when:
+		• Fast development
+		• No server management
+	Use SaaS when:
+		• Ready-made solution
+		• Minimal IT effort
+	
+	🔹 9. Common Interview Traps (Avoid)
+	❌ EC2 is PaaS
+	❌ SaaS gives server access
+	❌ PaaS removes app control
+	❌ SaaS requires infrastructure knowledge
+	
+	🔹 10. Final Interview Answer (Perfect)
+		IaaS provides raw infrastructure, PaaS provides a managed platform for application development, and SaaS provides fully managed software applications over the internet.
+	
+	🔹 11. One-Line Power Answer
+		IaaS, PaaS, and SaaS represent increasing levels of abstraction in cloud computing, from infrastructure to complete software solutions.
+	
+	
+	
+	
